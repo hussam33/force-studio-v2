@@ -24,6 +24,37 @@ workflows.
 
 ![Donate dialog with the wallets and QR codes](docs/screenshots/donate.png)
 
+## Where the model lives
+
+The model that the next songs will load is chosen at the top of the composer:
+
+![The MODEL bar showing the selected checkpoint](docs/screenshots/model-bar.png)
+
+The files themselves live in ComfyUI's model folders, which is why the studio points at a ComfyUI rather than
+at a model folder of its own:
+
+| Engine | File | ComfyUI folder |
+| --- | --- | --- |
+| YuE2-3B | `yue2_3b_bf16.safetensors` | `models/checkpoints` |
+| YuE2 cover | `sheetsage2_bf16.safetensors` | `models/audio_encoders` |
+| ACE-Step 1.5 | `acestep_v1.5_turbo.safetensors` | `models/unet` |
+| ACE-Step 1.5 XL | `acestep_v1.5_xl_turbo_bf16.safetensors` | `models/unet` |
+| ACE-Step encoders | `qwen_0.6b_ace15`, `qwen_1.7b_ace15` (and `qwen_4b_ace15` for XL) | `models/text_encoders` |
+| ACE-Step VAE | `ace_1.5_vae.safetensors` | `models/vae` |
+
+Tell the studio where ComfyUI is once, in **Provider settings → This PC · ComfyUI**: the API URL and the folder
+that holds `models`. *Check model files* then reports what is present or missing.
+
+![Provider settings: ComfyUI address, folder and workflows](docs/screenshots/model-location.png)
+
+## Force Music
+
+![Force Music in the sidebar](docs/screenshots/force-music.png)
+
+The **Force Music** button in the sidebar opens the artist's SoundCloud
+([hussamalshehri8888](https://soundcloud.com/hussamalshehri8888)) in a new tab. Next to it, **Donate** lists the
+crypto wallets with QR codes.
+
 ## Also in the studio
 
 - **Appearances** — 29 bundled backgrounds blended under the skin, a dim slider, and seven colour skins
@@ -168,3 +199,9 @@ The interface and the studio backend come from [Sonora Studio](https://github.co
 (MIT, see `LICENSE`). YuE2, SheetSage2 and the ComfyUI templates belong to their authors and keep their own
 licences; this app only runs them locally. The two workflow files are the official templates from
 [Comfy-Org/workflow_templates](https://github.com/Comfy-Org/workflow_templates).
+
+---
+
+*Built with love, for the love of music — and a few thousand GPU hours.*
+
+**And I love you all. Enjoy.**
