@@ -22,8 +22,6 @@ workflows.
 
 ![Create music](docs/screenshots/studio.png)
 
-![Donate dialog with the wallets and QR codes](docs/screenshots/donate.png)
-
 
 ## Appearances and skins
 
@@ -76,14 +74,13 @@ that holds `models`. *Check model files* then reports what is present or missing
 ![Force Music in the sidebar](docs/screenshots/force-music.png)
 
 The **Force Music** button in the sidebar opens the artist's SoundCloud
-([hussamalshehri8888](https://soundcloud.com/hussamalshehri8888)) in a new tab. Next to it, **Donate** lists the
-crypto wallets with QR codes.
+([hussamalshehri8888](https://soundcloud.com/hussamalshehri8888)) in a new tab.
 
 ## Also in the studio
 
 - **Appearances** — 29 bundled backgrounds blended under the skin, a dim slider, and seven colour skins
   (Cyberpunk, Blade, Acid, Blood, Solar, Vapor, Mono) generated from one stylesheet at build time.
-- **Force Music** button opens the artist's SoundCloud; **Donate** shows crypto addresses with QR codes.
+- **Force Music** button opens the artist's SoundCloud.
 - Library, favorites, archive, remix/cover, prompt assistant and the editor tools that ship with the
   Sonora Studio interface.
 
