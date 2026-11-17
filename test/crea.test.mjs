@@ -35,13 +35,13 @@ test('negative styles only reach the sampler with the SFT model; a reference add
   assert.equal(sft['16'].inputs.tags, 'autotune, distorted guitars');
   assert.equal(sft['16'].inputs.generate_audio_codes, false);
   assert.deepEqual(sft['8'].inputs.negative, ['16', 0]);
-  const ref = buildWorkflow(input, 1, ID, config, `Sonora/${ID}.mp3`);
+  const ref = buildWorkflow(input, 1, ID, config, `ForceStudioV2/${ID}.mp3`);
   assert.equal(ref['14'].class_type, 'ReferenceTimbreAudio');
   assert.deepEqual(ref['8'].inputs.positive, ['14', 0]);
   assert.equal(ref['4'].inputs.generate_audio_codes, false);
   assert.throws(
     () =>
-      buildWorkflow(input, 1, ID, config, `Sonora/${ID}.mp3`, { audio: `Sonora/${ID}.mp3`, denoise: 0.5 }),
+      buildWorkflow(input, 1, ID, config, `ForceStudioV2/${ID}.mp3`, { audio: `ForceStudioV2/${ID}.mp3`, denoise: 0.5 }),
     /cannot be combined/
   );
   assert.throws(() => buildWorkflow(input, 1, ID, config, '../etc/passwd'), /Invalid audio reference\./);
@@ -81,7 +81,7 @@ test('the Creativo ↔ Robusto slider maps to guidance and temperature and is re
 });
 
 test('saved prompts: validated, persisted atomically, limited, importable', t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-prompts-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-prompts-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   let changes = 0;
   const store = createPromptStore({ dataDir: dir, onChange: () => changes++ });
@@ -142,7 +142,7 @@ test(
   'uploads become library songs; a remix and a reference travel to the GPU with their audio',
   { skip: !hasFfmpeg },
   async t => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-crea-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-crea-'));
     const submitted = [];
     const fake = async (url, options) => {
       const body = options.body ? JSON.parse(options.body) : null;
@@ -162,7 +162,7 @@ test(
       vae: 'v',
       generationBackend: 'runpod',
       runpod: { endpointId: 'endpoint-test', modelsReady: true, sftReady: true },
-      publicOrigin: 'https://sonora.example.test',
+      publicOrigin: 'https://force.example.test',
     };
     const app = createStudio(cfg, {
       dataDir: dir,
@@ -176,7 +176,7 @@ test(
     });
     await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
     const url = `http://127.0.0.1:${app.server.address().port}`;
-    const headers = { Host: 'sonora.example.test', Origin: 'https://sonora.example.test', 'X-Sonora': '1' };
+    const headers = { Host: 'force.example.test', Origin: 'https://force.example.test', 'X-Force-Studio': '1' };
     const json = { ...headers, 'Content-Type': 'application/json' };
     const tone = path.join(dir, 'tone.wav');
     spawnSync('ffmpeg', [
@@ -295,7 +295,7 @@ test(
     assert.ok(run.inputAudio);
     assert.equal(run.workflow['14'].class_type, 'ReferenceTimbreAudio');
     assert.equal(run.workflow['16'].inputs.tags, 'autotune');
-    assert.match(run.workflow['12'].inputs.audio, /^Sonora\/[a-f0-9-]{36}\.mp3$/);
+    assert.match(run.workflow['12'].inputs.audio, /^ForceStudioV2\/[a-f0-9-]{36}\.mp3$/);
     // an unknown reference is refused
     r = await request(url + '/api/generate', {
       method: 'POST',
@@ -337,7 +337,7 @@ test(
   'new voice on RunPod: the separated base travels as MP3 with the job and the style no longer says "no vocals"',
   { skip: !hasFfmpeg },
   async t => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-cover-runpod-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-cover-runpod-'));
     const submitted = [];
     const fake = async (url, options) => {
       const body = options.body ? JSON.parse(options.body) : null;
@@ -415,7 +415,7 @@ test(
         vae: 'v',
         generationBackend: 'runpod',
         runpod: { endpointId: 'endpoint-test', modelsReady: true, sftReady: true },
-        publicOrigin: 'https://sonora.example.test',
+        publicOrigin: 'https://force.example.test',
       },
       {
         dataDir: dir,
@@ -431,7 +431,7 @@ test(
     });
     await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
     const url = `http://127.0.0.1:${app.server.address().port}`;
-    const headers = { Host: 'sonora.example.test', Origin: 'https://sonora.example.test', 'X-Sonora': '1' };
+    const headers = { Host: 'force.example.test', Origin: 'https://force.example.test', 'X-Force-Studio': '1' };
     const post = (route, body) =>
       request(url + route, {
         method: 'POST',
@@ -456,7 +456,7 @@ test(
     const run = submitted[0];
     assert.ok(run.inputAudio && run.inputAudio.length > 100, 'the base travels with the job');
     assert.equal(run.workflow['14'].class_type, 'ReferenceTimbreAudio');
-    assert.equal(run.workflow['12'].inputs.audio, `Sonora/${job.id}.mp3`);
+    assert.equal(run.workflow['12'].inputs.audio, `ForceStudioV2/${job.id}.mp3`);
     assert.doesNotMatch(run.workflow['4'].inputs.tags, /no vocals/);
     assert.match(run.workflow['4'].inputs.tags, /male voice/);
     assert.equal(run.workflow['4'].inputs.lyrics, '[Verse]\nThe last bus drags its wheels');

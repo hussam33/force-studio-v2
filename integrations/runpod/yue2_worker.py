@@ -744,7 +744,7 @@ def transcribe(job, data):
         raise sheetsage_error
     progress(job, 'SheetSage2 unavailable; transcribing with yue2.cpp')
     start_engine()
-    boundary = 'sonora' + uuid.uuid4().hex
+    boundary = 'force studio v2' + uuid.uuid4().hex
     form = (f'--{boundary}\r\nContent-Disposition: form-data; name="audio"; filename="song.{fmt}"\r\n'
             f'Content-Type: application/octet-stream\r\n\r\n').encode() + audio + b'\r\n'
     if not chords:

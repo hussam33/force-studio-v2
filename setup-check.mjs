@@ -55,7 +55,7 @@ export function createSetupCheck({
             label: 'Node.js',
             status: 'missing',
             detail: nodeVersion,
-            hint: 'Sonora needs Node.js 22 or newer. Install it from nodejs.org, or use the portable download, which includes it.',
+            hint: 'Force Studio v2 needs Node.js 22 or newer. Install it from nodejs.org, or use the portable download, which includes it.',
           }
     );
     const ffmpeg = await run(spawnImpl, 'ffmpeg', ['-version']);
@@ -69,8 +69,8 @@ export function createSetupCheck({
             detail: 'not found on PATH',
             hint:
               platform === 'win32'
-                ? 'Needed for uploads, editing, stems and export. In a Command Prompt run: winget install Gyan.FFmpeg, then restart Sonora.'
-                : 'Needed for uploads, editing, stems and export. Install ffmpeg with your package manager, then restart Sonora.',
+                ? 'Needed for uploads, editing, stems and export. In a Command Prompt run: winget install Gyan.FFmpeg, then restart Force Studio v2.'
+                : 'Needed for uploads, editing, stems and export. On Debian/Ubuntu run: sudo apt install ffmpeg, then restart Force Studio v2.',
           }
     );
     const gpu = await run(spawnImpl, 'nvidia-smi', [
@@ -84,13 +84,13 @@ export function createSetupCheck({
         label: 'NVIDIA graphics card',
         status: 'warn',
         detail: 'not found',
-        hint: 'Without an NVIDIA card use RunPod or Vast.ai for ACE-Step. YuE2 on this PC needs an NVIDIA card with 12 GB.',
+        hint: 'YuE2 runs on this PC through ComfyUI and needs an NVIDIA card (8 GB is enough for the int8 3B model).',
       });
     } else {
       const [name, memory, driver] = first.split(',').map(part => part.trim());
       const gb = Math.round((Number(memory) / 1024) * 10) / 10;
       items.push(
-        gb >= 12
+        gb >= 8
           ? {
               id: 'gpu',
               label: 'NVIDIA graphics card',
@@ -102,7 +102,7 @@ export function createSetupCheck({
               label: 'NVIDIA graphics card',
               status: 'warn',
               detail: `${name} · ${gb} GB · driver ${driver}`,
-              hint: 'The YuE2 Q8_0 model was tested on a 12 GB card; with less memory it may not run. RunPod is an alternative.',
+              hint: 'YuE2 needs about 8 GB of graphics memory for the int8 3B model; with less it may not run.',
             }
       );
     }

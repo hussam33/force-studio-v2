@@ -13,7 +13,7 @@ import base64
 import csv
 import subprocess
 
-ROOT = Path('/runpod-volume/sonora/training')
+ROOT = Path('/runpod-volume/force studio v2/training')
 REV = 'cfd644ead212419cd30c99a83d06093cce3d7df2'
 SHA = '06f2b4c03b9e02669ca988b6c16df9591b06dba130cbd2bb3b902994d3d9e170'
 
@@ -55,10 +55,10 @@ def bootstrap():
     import subprocess
     subprocess.run(['python', '-m', 'pip', 'install', '--disable-pip-version-check',
                     'peft==0.18.0', 'diffusers==0.36.0', 'loguru==0.7.3', 'soundfile==0.13.1'], check=True, timeout=300)
-    target = Path('/comfyui/custom_nodes/sonora_fl_training')
+    target = Path('/comfyui/custom_nodes/force_fl_training')
     archive = Path('/tmp/trainer.zip')
     req = urllib.request.Request('https://api.github.com/repos/filliptm/ComfyUI-FL-AceStep-Training/zipball/' + REV,
-                                 headers={'User-Agent': 'Sonora'})
+                                 headers={'User-Agent': 'Force Studio v2'})
     with urllib.request.urlopen(req, timeout=60) as response:
         data = response.read(4 * 1024 * 1024)
     if hashlib.sha256(data).hexdigest() != SHA:
@@ -75,7 +75,7 @@ def bootstrap():
             dest = target / relative
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(z.read(item))
-    publish = Path('/comfyui/custom_nodes/sonora_publish')
+    publish = Path('/comfyui/custom_nodes/force_publish')
     publish.mkdir(parents=True, exist_ok=True)
     publish.joinpath('__init__.py').write_text(PUBLISH_SOURCE)
     # Permit a one-epoch smoke test; the upstream configure method supports it.
@@ -92,7 +92,7 @@ import hashlib
 import uuid
 import torch
 from safetensors.torch import load_file, save_file
-class SonoraPublishLoRA:
+class ForcePublishLoRA:
     @classmethod
     def INPUT_TYPES(cls):
         return {"required": {"checkpoint": ("STRING",), "model": ("MODEL",), "project_id": ("STRING",), "training_status": ("STRING",)}}
@@ -103,7 +103,7 @@ class SonoraPublishLoRA:
         if not training_status.startswith('Training complete!'):
             raise RuntimeError(training_status)
         project_id = str(uuid.UUID(project_id))
-        root = Path('/runpod-volume/sonora/training') / project_id
+        root = Path('/runpod-volume/force studio v2/training') / project_id
         source = (Path(checkpoint) / 'adapter' / 'adapter_model.safetensors').resolve()
         if not source.is_relative_to(root.resolve()): raise ValueError('Invalid checkpoint path')
         config = json.loads(source.with_name('adapter_config.json').read_text())
@@ -117,13 +117,13 @@ class SonoraPublishLoRA:
             if key.endswith('.lora_A.weight'):
                 converted[key[:-len('.lora_A.weight')] + '.alpha'] = torch.tensor(float(config['lora_alpha']))
         if not converted: raise ValueError('Empty adapter')
-        name = 'sonora-' + project_id + '.safetensors'
+        name = 'force-' + project_id + '.safetensors'
         target = Path('/runpod-volume/models/loras') / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        save_file(converted, str(target) + '.part', metadata={"sonora_model": "acestep_v1.5_xl_turbo_bf16"})
+        save_file(converted, str(target) + '.part', metadata={"force_studio_model": "acestep_v1.5_xl_turbo_bf16"})
         Path(str(target) + '.part').replace(target)
-        return {"ui": {"sonora_lora": [{"loraName":name,"bytes":target.stat().st_size,"sha256":hashlib.sha256(target.read_bytes()).hexdigest()}]}}
-NODE_CLASS_MAPPINGS = {"SonoraPublishLoRA": SonoraPublishLoRA}
+        return {"ui": {"force_lora": [{"loraName":name,"bytes":target.stat().st_size,"sha256":hashlib.sha256(target.read_bytes()).hexdigest()}]}}
+NODE_CLASS_MAPPINGS = {"ForcePublishLoRA": ForcePublishLoRA}
 '''
 
 
@@ -183,7 +183,7 @@ def train(data, api, write_json, job):
                       'max_epochs':epochs,'batch_size':1,'gradient_accumulation':1,'save_every_n_epochs':5,
                       'output_dir':str(folder/'checkpoints'),'seed':42,'warmup_steps':0,'weight_decay':0.01,'max_grad_norm':1.0,'target_modules':'q_proj,k_proj,v_proj,o_proj'}),
             '7':node('FL_AceStep_Train', {'model':['1',0],'config':['6',0],'tensor_dir':['5',0],'lora_name':'adapter','resume_from':''}),
-            '8':node('SonoraPublishLoRA', {'checkpoint':['7',1],'model':['7',0],'project_id':project_id,'training_status':['7',2]})
+            '8':node('ForcePublishLoRA', {'checkpoint':['7',1],'model':['7',0],'project_id':project_id,'training_status':['7',2]})
         }
         prompt_id = str(uuid.uuid4())
         write_json(record, {'promptId':prompt_id})
@@ -200,8 +200,8 @@ def train(data, api, write_json, job):
             failure = failures[-1] if failures else {}
             raise RuntimeError('Training node ' + str(failure.get('node_id', '?')) + ': ' + str(failure.get('exception_type', 'unknown')) + ': ' + str(failure.get('exception_message', 'inspect scoped log'))[:600])
         if entry and entry.get('status', {}).get('completed'):
-            result = entry['outputs'].get('8', {}).get('sonora_lora', [])
-            if not result or result[0]['loraName'] != f'sonora-{project_id}.safetensors':
+            result = entry['outputs'].get('8', {}).get('force_lora', [])
+            if not result or result[0]['loraName'] != f'force-{project_id}.safetensors':
                 raise RuntimeError('Training completed without an adapter.')
             write_json(record, {'promptId':prompt_id,'result':result[0]})
             return result[0]

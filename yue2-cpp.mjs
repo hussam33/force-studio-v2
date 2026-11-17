@@ -6,7 +6,7 @@
 // related: yue2-local.mjs — the Python twin it replaces when configured; runpod-backend.mjs — the RunPod twin (call, submitAction, status, cancel, collect)
 // rules:   The engine listens on 127.0.0.1 only and is started detached so a song survives a restart of the app; every file path is built from a job UUID under dataDir/yue2-cpp.
 //          The engine keeps finished jobs in memory (last 32): the result is saved to disk at the first poll that sees it done, and a job the engine no longer knows is LOST, never resubmitted.
-//          The engine's seeds are 64-bit, Sonora sends both lm_seed and seed so a song can be replayed. A song is copied into the library only after size and SHA-256 match.
+//          The engine's seeds are 64-bit, Force Studio v2 sends both lm_seed and seed so a song can be replayed. A song is copied into the library only after size and SHA-256 match.
 // agent:   claude-opus-5-5 | anthropic | 2026-10-15 | s_20261015_cpp | Created: yue2.cpp (from YuE2-Studio's portable build) as the PC engine, Q8_0 backbone on the RTX 2060.
 // Codex | openai | 2026-10-15 | Pass selected source codes to the continuation request.
 import fs from 'node:fs';
@@ -230,7 +230,7 @@ export function createCppYue2(
     if (!r.ok) throw new Error('yue2.cpp: ' + (value.error || text.slice(0, 200) || r.status));
     return value;
   }
-  /** The engine request for a Sonora action (generate or plan). */
+  /** The engine request for a Force Studio v2 action (generate or plan). */
   function synthRequest(input, planOnly) {
     const seed = Number.isInteger(input.seed) && input.seed >= 0 ? input.seed : -1;
     // Rules: a replay renders the saved semantic codes again (same composition and singing) with another sound seed and steps; no planning.
@@ -316,7 +316,7 @@ export function createCppYue2(
       sha256: digest.digest('hex'),
     };
   }
-  /** Turn the engine's multipart answer into Sonora's result.json (flac + mp3 next to it). */
+  /** Turn the engine's multipart answer into Force Studio v2's result.json (flac + mp3 next to it). */
   async function save(id, answer, started) {
     const dir = folder(id);
     const parts = parseMultipart(answer.type, answer.body);

@@ -1,4 +1,4 @@
-// Builds the portable Windows folder of Sonora Studio: the app files, a verified Node.js runtime and Sonora.exe.
+// Builds the portable Windows folder of Force Studio v2: the app files, a verified Node.js runtime and ForceStudioV2.exe.
 //
 //   node scripts/make-portable.mjs [--out dist/folder] [--node-version v22.14.0] [--node-zip file.zip] [--skip-node] [--skip-launcher]
 //
@@ -85,14 +85,15 @@ function buildLauncher(out) {
     'csc.exe'
   );
   if (!fs.existsSync(csc))
-    throw new Error('The C# compiler that comes with Windows was not found, so Sonora.exe cannot be built.');
+    throw new Error('The C# compiler that comes with Windows was not found, so ForceStudioV2.exe cannot be built.');
   execFileSync(
     csc,
     [
       '/nologo',
       '/target:winexe',
-      `/out:${path.join(out, 'Sonora.exe')}`,
+      `/out:${path.join(out, 'ForceStudioV2.exe')}`,
       '/reference:System.Windows.Forms.dll',
+      `/win32icon:${path.join(ROOT, 'packaging', 'ForceStudioV2.ico')}`,
       path.join(ROOT, 'packaging', 'launcher', 'Launcher.cs'),
     ],
     { stdio: 'inherit' }
@@ -101,9 +102,12 @@ function buildLauncher(out) {
 
 async function main() {
   const args = process.argv.slice(2);
+  // Rules: the colour skins are generated from style.css, so every build refreshes them. A stale skin would
+  // silently drop the newest rules (dialog layouts, the footer) instead of failing loudly.
+  execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'make-skins.mjs')], { stdio: 'inherit' });
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   const out = path.resolve(
-    option(args, '--out', path.join(ROOT, 'dist', `Sonora-Studio-${pkg.version}-win-x64`))
+    option(args, '--out', path.join(ROOT, 'dist', `Force-Studio-v2-${pkg.version}-win-x64`))
   );
   const version = option(args, '--node-version', NODE_VERSION);
   if (!/^v\d+\.\d+\.\d+$/.test(version)) throw new Error('The Node.js version must look like v22.14.0.');
@@ -126,7 +130,7 @@ async function main() {
   console.log(`Copied ${files.length} files.`);
 
   if (!args.includes('--skip-node')) {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-node-'));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'force-node-'));
     try {
       const folder = await obtainNode(version, option(args, '--node-zip'), tmp);
       fs.mkdirSync(path.join(out, 'runtime', 'node'), { recursive: true });
@@ -141,28 +145,28 @@ async function main() {
 
   fs.writeFileSync(
     path.join(out, 'START-HERE.txt'),
-    `Sonora Studio ${pkg.version} (portable, Windows 10/11, 64-bit)
+    `Force Studio v2 ${pkg.version} (portable, Windows 10/11, 64-bit)
 
-1. Double-click Sonora.exe. Your browser opens Sonora Studio.
+1. Double-click ForceStudioV2.exe. Your browser opens the studio; ComfyUI starts in the background with the two YuE2 workflows already opened in its list.
    (Windows may say the program is from an unknown publisher: it is not signed. Choose "More info", then "Run anyway".)
-2. In the app, open "Provider settings". The "Setup check" at the top shows what this computer is missing and what to do.
-3. To stop Sonora, run "Stop Sonora.cmd".
+2. The create page opens on YuE2: describe the style, write the lyrics, press Create. "Music Cover" makes a new version of a song you upload.
+3. To stop Force Studio v2, run "Stop Force Studio v2.cmd".
 
-Your songs and settings stay in the "data" folder next to Sonora.exe. Copy that folder to keep them when you update.
-If Sonora does not start, double-click "Sonora (show errors).cmd".
-README.md explains everything else, including YuE2 on your own PC.
+Your songs and settings stay in the "data" folder next to ForceStudioV2.exe. Copy that folder to keep them when you update.
+If Force Studio v2 does not start, double-click "Force Studio v2 (show errors).cmd".
+README-YUE2.md explains the YuE2 setup (ComfyUI, YuE2 models, SheetSage2 for covers) and how the two EXE builds are made.
 
-Sonora Studio is only a tool for running third-party models, which keep their own licences. You are responsible for how you use it
+Force Studio v2 is only a tool for running third-party models, which keep their own licences. You are responsible for how you use it
 and for what you create. Read LICENSES-AND-RESPONSIBILITY.md (English and Italian).
 `
   );
   fs.writeFileSync(
-    path.join(out, 'Sonora (show errors).cmd'),
+    path.join(out, 'Force Studio v2 (show errors).cmd'),
     '@echo off\r\ncd /d "%~dp0"\r\nif exist "runtime\\node\\node.exe" (\r\n  "runtime\\node\\node.exe" server.mjs\r\n) else (\r\n  node server.mjs\r\n)\r\npause\r\n'
   );
   fs.writeFileSync(
-    path.join(out, 'Stop Sonora.cmd'),
-    '@echo off\r\ncd /d "%~dp0"\r\nif exist "Sonora.exe" (\r\n  start "" /wait "Sonora.exe" --stop\r\n) else (\r\n  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Ferma-Sonora.ps1"\r\n)\r\n'
+    path.join(out, 'Stop Force Studio v2.cmd'),
+    '@echo off\r\ncd /d "%~dp0"\r\nstart "" /wait "ForceStudioV2.exe" --stop\r\n'
   );
   console.log(`Portable folder ready: ${out}`);
 }

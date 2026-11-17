@@ -302,7 +302,7 @@ export function createLoraTrainer({ dataDir, remote, endpointId, model, onChange
         for (const p of projects.filter(p => p.job?.remoteId && !terminal.has(p.job.status))) {
           try {
             const r = await remote.trainingStatus(p.job.remoteId);
-            if (r.status === 'COMPLETED' && r.output?.loraName === `sonora-${p.id}.safetensors`) {
+            if (r.status === 'COMPLETED' && r.output?.loraName === `force-${p.id}.safetensors`) {
               p.job.status = 'done';
               p.loraName = r.output.loraName;
               p.job.completedAt = new Date().toISOString();

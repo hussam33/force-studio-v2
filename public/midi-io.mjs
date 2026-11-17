@@ -64,7 +64,7 @@ export function planToMidi(abc) {
   const head = [
     meta(0, 0x51, [(mpq >> 16) & 255, (mpq >> 8) & 255, mpq & 255]),
     meta(0, 0x58, [num || 4, Math.log2(den || 4), 24, 8]),
-    meta(0, 0x03, text('Sonora YuE2')),
+    meta(0, 0x03, text('Force Studio v2 YuE2')),
     ...score.sections.map(s => meta(ticks(s.start), 0x06, text(s.name))),
   ];
   const tracks = [track(head)];

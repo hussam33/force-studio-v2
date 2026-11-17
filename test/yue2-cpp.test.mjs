@@ -39,7 +39,7 @@ test('a multipart answer is split into its parts, binary bodies intact', () => {
 });
 
 test('plan, song and cover through a fake yue-server', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-cpp-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-cpp-'));
   const jobs = new Map();
   const seen = [];
   let next = 1;
@@ -206,7 +206,7 @@ test('an engine on another computer needs no files here, is never started, and i
   const cpp = createCppYue2(
     { remote: true, port: 19999 },
     {
-      dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-cpp-remote-')),
+      dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'force-cpp-remote-')),
       fetchImpl: async address => {
         asked.push(address);
         if (!up) throw new Error('connection refused');
@@ -233,7 +233,7 @@ test('with the engine on another computer, its loaded LoRAs are read from /props
   const cpp = createCppYue2(
     { remote: true, port: 19998 },
     {
-      dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-cpp-remote-lora-')),
+      dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'force-cpp-remote-lora-')),
       fetchImpl: async address =>
         address.endsWith('/props')
           ? new Response(JSON.stringify({ adapters: [{ name: 'lora-a' }, { name: 'lora-b' }] }), {
@@ -247,7 +247,7 @@ test('with the engine on another computer, its loaded LoRAs are read from /props
 });
 
 test('restart stops an engine started by hand (only the configured program), starts it again and reads its LoRAs', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-cpp-restart-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-cpp-restart-'));
   const files = Object.fromEntries(['engine', 'model', 'vae'].map(k => [k, path.join(dir, k)]));
   for (const f of Object.values(files)) fs.writeFileSync(f, 'x');
   let up = true; // an engine somebody started by hand

@@ -7,7 +7,7 @@
 //
 //
 // exports: createVastComfyBackend
-// used_by: sonora-studio/server.mjs
+// used_by: force-studio-v2/server.mjs
 // rules:   Never create, start, stop, or destroy cloud resources; accept only instance metadata returned by Vast.
 // agent:   Codex - 2026-10-10 - Added a no-provisioning Vast ComfyUI bridge.
 import { spawn as spawnProcess } from 'node:child_process';

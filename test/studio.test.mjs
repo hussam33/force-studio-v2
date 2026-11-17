@@ -74,7 +74,7 @@ test('input validation rejects invalid ranges, missing lyrics and unsafe types',
 });
 
 test('HTTP integration: two jobs, scoped cancel, recovery, downloads, persistence and origin protection', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-test-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-test-'));
   let pending = [],
     running = [],
     history = {},
@@ -151,7 +151,7 @@ test('HTTP integration: two jobs, scoped cancel, recovery, downloads, persistenc
   const req = async (route, method = 'GET', body, headers = {}) =>
     fetch(base + route, {
       method,
-      headers: { 'X-Sonora': '1', 'Content-Type': 'application/json', ...headers },
+      headers: { 'X-Force-Studio': '1', 'Content-Type': 'application/json', ...headers },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   const create = await req('/api/generate', 'POST', input);
@@ -165,7 +165,7 @@ test('HTTP integration: two jobs, scoped cancel, recovery, downloads, persistenc
     (await req('/api/generate', 'POST', input, { Origin: 'https://unrelated.example' })).status,
     403
   );
-  assert.equal((await req('/api/generate', 'POST', input, { 'X-Sonora': '' })).status, 403);
+  assert.equal((await req('/api/generate', 'POST', input, { 'X-Force-Studio': '' })).status, 403);
   const badHost = await new Promise((resolve, reject) => {
     const r = http.get(base + '/api/state', { headers: { Host: 'attacker.example' } }, res => {
       res.resume();

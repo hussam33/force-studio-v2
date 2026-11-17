@@ -1,12 +1,12 @@
 // @codedna
-// description: YuE2 LoRA training on RunPod from a Sonora training project: upload the songs, run HOT-Step's recipe, keep the result as "your LoRA".
+// description: YuE2 LoRA training on RunPod from a Force Studio v2 training project: upload the songs, run HOT-Step's recipe, keep the result as "your LoRA".
 //
 // exports: adapterIdFor | triggerFor | createYue2Trainer
 // used_by: server.mjs
 // related: lora-trainer.mjs — the projects (songs with style and lyrics) this trains from; integrations/runpod/yue2_worker.py train / train-upload
 // rules:   One YuE2 training at a time. A run is submitted once and never resubmitted: a lost or failed run stays failed and the user starts a new one.
 //          Songs travel in verified chunks (size + SHA-256 checked on the worker). A finished LoRA lives only on the RunPod volume (adapters/mine-…);
-//          Sonora keeps its name, trigger word and step in data/trainer/yue2-runs.json.
+//          Force Studio v2 keeps its name, trigger word and step in data/trainer/yue2-runs.json.
 // agent:   claude-opus-5-5 | anthropic | 2026-10-15 | s_20261015_train | Created after YuE2-Studio's training page (HOT-Step trainer, base-matched presets).
 // Codex | openai | 2026-10-15 | Resume checked uploads and keep cancellation terminal.
 import fs from 'node:fs';

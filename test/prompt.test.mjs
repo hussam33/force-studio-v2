@@ -16,7 +16,7 @@ import {
   bandBpm,
   effectiveBpm,
 } from '../public/prompt-core.mjs';
-import { toSonora, cleanLyrics, sectionOrder, parseStructure } from '../public/prompt-adapter.mjs';
+import { toForceStudioV2, cleanLyrics, sectionOrder, parseStructure } from '../public/prompt-adapter.mjs';
 import { validateInput } from '../lib.mjs';
 import { createPromptAI, windowsProtector, lyricsBudget, sungWordCount } from '../prompt-ai.mjs';
 
@@ -46,7 +46,7 @@ test('random presets transfer into valid ACE controls without Suno parameters', 
   for (let i = 0; i < 40; i++) {
     const choices = randomPromptState(),
       prompt = buildPrompt(choices),
-      patch = toSonora(choices, prompt.optimized);
+      patch = toForceStudioV2(choices, prompt.optimized);
     assert.ok(choices.genres.length && choices.instruments.length);
     assert.ok(patch.tags);
     assert.ok(!('sunoV6' in patch) && !('exclude' in patch));
@@ -58,31 +58,31 @@ test('random presets transfer into valid ACE controls without Suno parameters', 
 
 test('transfer preserves untouched fields, normalizes sections and rejects unsupported values', () => {
   const state = { ...createEmptyState(), key: ['C# Minor'], bpm: '110', vocal: ['female-warm'] };
-  assert.deepEqual(toSonora(state, ' Piano '), {
+  assert.deepEqual(toForceStudioV2(state, ' Piano '), {
     tags: 'Piano',
     instrumental: false,
     bpm: 110,
     keyscale: 'C# minor',
   });
   assert.deepEqual(
-    toSonora(createEmptyState(), 'Piano'),
+    toForceStudioV2(createEmptyState(), 'Piano'),
     { tags: 'Piano' },
     'absence of a voice choice must preserve the composer mode'
   );
   const lyrics = '[Mood: Happy]\n[Verse | soft delivery]\nResta qui\n\n[Chorus]\nCon me';
-  assert.equal(toSonora(state, 'Piano', lyrics).lyrics, '[Verse]\nResta qui\n\n[Chorus]\nCon me');
+  assert.equal(toForceStudioV2(state, 'Piano', lyrics).lyrics, '[Verse]\nResta qui\n\n[Chorus]\nCon me');
   assert.equal(cleanLyrics('[Verse]\n(non andare)\nResta'), '[Verse]\n(non andare)\nResta');
   assert.deepEqual(sectionOrder({ structure: ['Verse-Pre-Chorus-Chorus'] }), [
     'Verse',
     'Pre-Chorus',
     'Chorus',
   ]);
-  assert.throws(() => toSonora({ ...state, bpm: '251' }, 'Piano'));
-  assert.throws(() => toSonora(state, ''));
+  assert.throws(() => toForceStudioV2({ ...state, bpm: '251' }, 'Piano'));
+  assert.throws(() => toForceStudioV2(state, ''));
 });
 
 function configured(t, fetchImpl) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-ai-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-ai-'));
   const envFile = path.join(dir, '.env');
   fs.writeFileSync(envFile, 'DEEPSEEK_API_KEY="fake-private-key"\nUNRELATED_SECRET=unused\n');
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
@@ -157,7 +157,7 @@ test('AI serializes requests, releases failed calls and redacts provider errors'
 });
 
 test('key setup verifies before saving, never returns the key and survives a restart', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-ai-config-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-ai-config-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const credentialsFile = path.join(dir, 'nested', 'prompt-ai.json');
   let reject = false,
@@ -193,7 +193,7 @@ test('key setup verifies before saving, never returns the key and survives a res
 });
 
 test('a plain-text key from an older version is migrated to the protected format and still works', t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-ai-migrate-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-ai-migrate-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const credentialsFile = path.join(dir, 'prompt-ai.json');
   fs.writeFileSync(credentialsFile, JSON.stringify({ apiKey: 'fake-personal-key-123456' }));
@@ -264,14 +264,14 @@ test('a chosen tempo band supplies the BPM, and an exact BPM always wins', () =>
   const state = { ...createEmptyState(), tempo: ['Slow (80-100 BPM)'], key: ['G# Minor'] };
   assert.equal(effectiveBpm(state), '90');
   assert.match(buildPrompt(state).optimized, /90 BPM/);
-  assert.equal(toSonora(state, 'Piano').bpm, 90);
-  assert.equal(toSonora(state, 'Piano').keyscale, 'G# minor');
+  assert.equal(toForceStudioV2(state, 'Piano').bpm, 90);
+  assert.equal(toForceStudioV2(state, 'Piano').keyscale, 'G# minor');
   const exact = { ...state, bpm: '84' };
   assert.equal(effectiveBpm(exact), '84');
-  assert.equal(toSonora(exact, 'Piano').bpm, 84);
+  assert.equal(toForceStudioV2(exact, 'Piano').bpm, 84);
   assert.match(buildPrompt(exact).optimized, /84 BPM/);
   assert.doesNotMatch(buildPrompt(exact).optimized, /90 BPM/);
-  assert.equal('bpm' in toSonora({ ...createEmptyState(), key: ['C Major'] }, 'Piano'), false);
+  assert.equal('bpm' in toForceStudioV2({ ...createEmptyState(), key: ['C Major'] }, 'Piano'), false);
 });
 
 test('a typed section order is parsed, with Italian names and a 16-section cap', () => {

@@ -80,7 +80,7 @@ test('YuE2 input: it always sings, takes an ABC plan and refuses ACE-Step-only o
 });
 
 test('YuE2 end to end with a fake endpoint: plan, edited plan, song saved with its plan and real length', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-yue2-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-yue2-'));
   const flac = Buffer.alloc(5000, 1),
     mp3 = Buffer.alloc(3000, 2);
   const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
@@ -160,7 +160,7 @@ test('YuE2 end to end with a fake endpoint: plan, edited plan, song saved with i
   const post = (route, body) =>
     fetch(base + route, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Sonora': '1' },
+      headers: { 'Content-Type': 'application/json', 'X-Force-Studio': '1' },
       body: JSON.stringify(body),
     });
   const state = async () => (await fetch(base + '/api/state')).json();
@@ -208,6 +208,8 @@ test('YuE2 end to end with a fake endpoint: plan, edited plan, song saved with i
       lyrics: '[Verse]\nCiao',
       cot: 'full',
       seed: 4242,
+      // The graph needs the length the studio asked for (the ComfyUI workflow takes max_duration from it).
+      duration: 30,
       abc: edited,
     }
   );
@@ -310,7 +312,7 @@ test('YuE2 end to end with a fake endpoint: plan, edited plan, song saved with i
 });
 
 test('copying a finished song reports progress after every verified chunk', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-copy-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-copy-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   fs.mkdirSync(path.join(dir, 'audio'));
   const flac = crypto.randomBytes(7000),

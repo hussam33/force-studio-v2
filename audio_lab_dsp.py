@@ -1,8 +1,8 @@
 # @codedna
 # description: Audio Lab measurement and mastering chain adapted from Barichord Audio Lab (MIT).
 # rules: Channels-first float32 arrays; one processing order for every render; measure the result, never assume it.
-# agent: Claude - 2026-10-04 - Audio Lab integration for Sonora.
-"""Mastering DSP for Sonora Audio Lab.
+# agent: Claude - 2026-10-04 - Audio Lab integration for Force Studio v2.
+"""Mastering DSP for Force Studio v2 Audio Lab.
 
 Adapted from Barichord Audio Lab (audio_mastering_tool.py and audio_analyzer.py),
 MIT License, Copyright (c) 2025 geeknik. See THIRD_PARTY_NOTICES.md.
@@ -27,10 +27,10 @@ from scipy.ndimage import minimum_filter1d, uniform_filter1d
 
 try:
     from numba import njit
-except ImportError:  # pragma: no cover - the Sonora runtime ships numba
+except ImportError:  # pragma: no cover - the Force Studio v2 runtime ships numba
     njit = None
 
-VERSION = 'sonora-audio-lab/2'
+VERSION = 'force-audio-lab/2'
 MAX_SECONDS = 600
 # Shared with public/audio-lab-dsp.mjs: the browser plays this exact chain in real time.
 EQ_BANDS = (31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000)

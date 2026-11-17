@@ -22,7 +22,7 @@ test('repaint window adds context, keeps the 10 s minimum and stays inside the s
 });
 
 test('splice replaces only the chosen section and keeps the song length', { skip: !hasFfmpeg }, async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-splice-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-splice-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const tone = (file, hz, seconds) =>
     spawnSync('ffmpeg', [
@@ -86,7 +86,7 @@ test(
   'a section instrument is placed in silence at its exact position and keeps the song length',
   { skip: !hasFfmpeg },
   async t => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-place-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-place-'));
     t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
     const segment = path.join(dir, 's.wav');
     spawnSync('ffmpeg', [

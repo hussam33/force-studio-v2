@@ -4,7 +4,7 @@
 # used_by: stems.mjs
 # rules: CPU only; stems are written as FLAC under task['outputDir'] with fixed names; never touch the source file.
 # agent: claude-sonnet-5-5 - 2026-10-09 - htdemucs_6s through audio-separator with its default FLAC writer (use_soundfile=True silences stereo floats in 0.36.1).
-"""Local six-stem separation. All paths come from Sonora, never from browser input."""
+"""Local six-stem separation. All paths come from Force Studio v2, never from browser input."""
 import json
 import logging
 import re

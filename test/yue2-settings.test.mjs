@@ -27,7 +27,7 @@ async function start(closers, dir) {
   const post = (route, body) =>
     fetch(base + route, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Sonora': '1' },
+      headers: { 'Content-Type': 'application/json', 'X-Force-Studio': '1' },
       body: JSON.stringify(body),
     });
   const config = async () => (await fetch(base + '/api/config')).json();
@@ -35,7 +35,7 @@ async function start(closers, dir) {
 }
 
 test('yue2.cpp files are checked, saved in the data folder and used after a restart', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-yue2-settings-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-yue2-settings-'));
   const closers = [];
   try {
     const files = {};
@@ -73,7 +73,7 @@ test('yue2.cpp files are checked, saved in the data folder and used after a rest
       vae: files['vae.gguf'],
     });
     assert.equal(saved.status, 200);
-    assert.match((await saved.json()).message, /Restart Sonora/);
+    assert.match((await saved.json()).message, /Restart Force Studio v2/);
     const shown = (await first.config()).providers.yue2.cpp;
     assert.equal(shown.engine, files['yue-server.exe']);
     assert.equal(shown.transcriber, '', 'optional files stay empty');
@@ -94,7 +94,7 @@ test('yue2.cpp files are checked, saved in the data folder and used after a rest
 });
 
 test('the YuE2 RunPod endpoint ID is validated and applied at once', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-yue2-endpoint-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-yue2-endpoint-'));
   const closers = [];
   try {
     const { post, config } = await start(closers, dir);
@@ -112,7 +112,7 @@ test('the YuE2 RunPod endpoint ID is validated and applied at once', async () =>
 });
 
 test('the engine can be set to run on another computer: only a port is saved, and it is reported by the setup check', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-yue2-remote-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-yue2-remote-'));
   const closers = [];
   try {
     const first = await start(closers, dir);

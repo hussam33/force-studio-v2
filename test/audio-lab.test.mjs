@@ -125,7 +125,7 @@ test('mastering settings are validated, rounded to engine steps and clamped only
 });
 
 test('editor and Audio Lab never run CPU tasks at the same time', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-cpu-')),
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-cpu-')),
     job = library(dir),
     jobs = [job],
     cpu = createCpuLock();
@@ -173,7 +173,7 @@ test('editor and Audio Lab never run CPU tasks at the same time', async t => {
 });
 
 test('sessions analyse, render full previews, save masters, prune drafts and recover without relaunching', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-lab-')),
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-lab-')),
     job = library(dir),
     jobs = [job],
     tasks = [];
@@ -250,7 +250,7 @@ test('sessions analyse, render full previews, save masters, prune drafts and rec
 });
 
 test('imports, references, cancellation and removal keep library audio intact', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-lab-import-')),
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-lab-import-')),
     job = library(dir);
   let release;
   const runTask = async task => {
@@ -304,7 +304,7 @@ test('imports, references, cancellation and removal keep library audio intact', 
 });
 
 test('AI advice sends measurements only, clamps proposals and keeps manual mastering when AI fails', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-lab-ai-')),
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-lab-ai-')),
     job = library(dir),
     credentialsFile = path.join(dir, 'prompt-ai.json');
   fs.writeFileSync(credentialsFile, JSON.stringify({ apiKey: 'fake-personal-key-123456' }));
@@ -388,7 +388,7 @@ test('AI advice sends measurements only, clamps proposals and keeps manual maste
 });
 
 test('Audio Lab HTTP routes: origin protection, upload, preview, ranges and downloads', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-lab-http-')),
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-lab-http-')),
     job = library(dir);
   fs.writeFileSync(path.join(dir, 'library.json'), JSON.stringify({ version: 1, jobs: [job] }));
   const fake = http.createServer((req, res) => {
@@ -410,7 +410,7 @@ test('Audio Lab HTTP routes: origin protection, upload, preview, ranges and down
   const post = (route, body, headers = {}) =>
     fetch(base + route, {
       method: 'POST',
-      headers: { 'X-Sonora': '1', 'Content-Type': 'application/json', ...headers },
+      headers: { 'X-Force-Studio': '1', 'Content-Type': 'application/json', ...headers },
       body: body instanceof Buffer ? body : JSON.stringify(body),
     });
   assert.equal((await fetch(base + '/api/audio-lab/sessions', { method: 'POST', body: '{}' })).status, 403);
@@ -457,7 +457,7 @@ test('Audio Lab HTTP routes: origin protection, upload, preview, ranges and down
     (
       await fetch(`${base}/api/audio-lab/${s.id}/renders/${current.renders[0].id}`, {
         method: 'DELETE',
-        headers: { 'X-Sonora': '1' },
+        headers: { 'X-Force-Studio': '1' },
       })
     ).status,
     200
@@ -488,14 +488,14 @@ test('Audio Lab HTTP routes: origin protection, upload, preview, ranges and down
   )
     await new Promise(r => setTimeout(r, 5));
   assert.equal(
-    (await fetch(`${base}/api/audio-lab/${imported.id}`, { method: 'DELETE', headers: { 'X-Sonora': '1' } }))
+    (await fetch(`${base}/api/audio-lab/${imported.id}`, { method: 'DELETE', headers: { 'X-Force-Studio': '1' } }))
       .status,
     200
   );
 });
 
 test('exported masters can be added to the library as new tracks, leaving the original untouched', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-lab-library-')),
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-lab-library-')),
     job = {
       ...library(dir),
       input: { tags: 'indie pop', bpm: 96, lyrics: '[Verse]\nCiao', instrumental: false, duration: 30 },
@@ -515,7 +515,7 @@ test('exported masters can be added to the library as new tracks, leaving the or
   const post = (route, body) =>
     fetch(base + route, {
       method: 'POST',
-      headers: { 'X-Sonora': '1', 'Content-Type': 'application/json' },
+      headers: { 'X-Force-Studio': '1', 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
   const state = async () => (await fetch(base + '/api/state')).json();

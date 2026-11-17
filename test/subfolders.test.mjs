@@ -44,7 +44,7 @@ test('a model in a sub-folder is found by its file name, exact names win, ambigu
 });
 
 test('Studio is ready with sub-folder models and sends the names ComfyUI lists', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-sub-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-sub-'));
   const submitted = [];
   const nodes = {
     UNETLoader: { unet_name: [['acestep\\model.safetensors']] },
@@ -98,7 +98,7 @@ test('Studio is ready with sub-folder models and sends the names ComfyUI lists',
   const base = `http://127.0.0.1:${app.server.address().port}`;
   const response = await fetch(base + '/api/generate', {
     method: 'POST',
-    headers: { 'X-Sonora': '1', 'Content-Type': 'application/json' },
+    headers: { 'X-Force-Studio': '1', 'Content-Type': 'application/json' },
     body: JSON.stringify({
       title: 'Test',
       tags: 'piano',

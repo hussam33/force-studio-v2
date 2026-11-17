@@ -25,8 +25,8 @@
 //
 //
 // exports: createFileProtector
-// used_by: sonora-studio/prompt-ai.mjs
-//                   sonora-studio/provider-secrets.mjs
+// used_by: force-studio-v2/prompt-ai.mjs
+//                   force-studio-v2/provider-secrets.mjs
 // rules:   Keep the master key server-side with owner-only permissions; reject tampered ciphertext.
 // agent:   Codex - 2026-10-05 - VPS credential storage.
 import fs from 'node:fs';

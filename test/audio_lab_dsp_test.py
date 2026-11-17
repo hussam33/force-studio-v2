@@ -1,7 +1,7 @@
 # @codedna
 # description: Audio Lab DSP regressions on synthetic signals: channels, length, loudness, true peak, timing.
 # rules: Synthetic audio only; no network, GPU or library files.
-# agent: Claude - 2026-10-04 - Audio Lab integration for Sonora.
+# agent: Claude - 2026-10-04 - Audio Lab integration for Force Studio v2.
 """Run with: runtime/separator/Scripts/python.exe -m unittest discover -s test -p "*_test.py\""""
 import json
 import math

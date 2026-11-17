@@ -5,7 +5,7 @@
 // used_by: runpod-account.mjs
 //                   server.mjs
 // rules:   Keep credentials server-side. Only make an AI request after an explicit UI action. Audio goes only to providers that can hear it.
-// agent:   Codex - 2026-10-04 - Adapted Suno Prompt AI functions for local Sonora.
+// agent:   Codex - 2026-10-04 - Adapted Suno Prompt AI functions for local Force Studio v2.
 // Claude - 2026-10-05 - OpenAI provider with audio input (gpt-audio) next to DeepSeek.
 // claude-sonnet-5-5 - 2026-10-08 - Lyrics: short hook-based songs, word budget from the duration, one retry when too long.
 import fs from 'node:fs';
@@ -112,7 +112,7 @@ export function createPromptAI(settings = {}, { fetchImpl = fetch, protector = u
       windowsProtector ||
       (file
         ? createFileProtector(
-            process.env.SONORA_SECRET_FILE || path.join(path.dirname(file), '.credential-key')
+            process.env.FORCE_STUDIO_SECRET_FILE || path.join(path.dirname(file), '.credential-key')
           )
         : null);
   const usableKey = value =>
@@ -510,7 +510,7 @@ Return ONLY lyrics in ${language}, with section tags, no introduction, no markdo
       );
       if (sungWordCount(shorter) < sungWordCount(result)) result = shorter;
     }
-    if (result.length > 12000) throw new Error('The AI lyrics exceed the Sonora limit.');
+    if (result.length > 12000) throw new Error('The AI lyrics exceed the Force Studio v2 limit.');
     if (mode === 'tag-existing') {
       const sungWords = value =>
         value

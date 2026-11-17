@@ -1,7 +1,7 @@
-// Sonora.exe: starts Sonora Studio from the folder it sits in and opens the browser.
+// ForceStudioV2.exe: starts Force Studio v2 from the folder it sits in and opens the browser.
 // Built by scripts/make-portable.mjs with the C# compiler that ships with Windows (no extra tools).
-//   Sonora.exe          start Sonora (if it is already running, only open the browser)
-//   Sonora.exe --stop   ask a running Sonora to stop
+//   ForceStudioV2.exe          start Force Studio v2 (if it is already running, only open the browser)
+//   ForceStudioV2.exe --stop   ask a running Force Studio v2 to stop
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -12,7 +12,7 @@ using System.Windows.Forms;
 
 static class Launcher
 {
-    const string Title = "Sonora Studio";
+    const string Title = "Force Studio v2";
 
     [STAThread]
     static int Main(string[] args)
@@ -33,7 +33,7 @@ static class Launcher
         if (!File.Exists(node)) node = FindOnPath("node.exe");
         if (node == null)
         {
-            MessageBox.Show("Node.js 22 or newer was not found.\n\nUse the portable download (it includes Node.js) or install Node.js from nodejs.org, then start Sonora again.", Title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Node.js 22 or newer was not found.\n\nUse the portable download (it includes Node.js) or install Node.js from nodejs.org, then start Force Studio v2 again.", Title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return 1;
         }
         int major = NodeMajor(node);
@@ -56,7 +56,7 @@ static class Launcher
                 return 0;
             }
         }
-        MessageBox.Show("Sonora Studio did not start.\n\nDouble-click \"Sonora (show errors).cmd\" in this folder to see what went wrong.", Title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        MessageBox.Show("Force Studio v2 did not start.\n\nDouble-click \"Force Studio v2 (show errors).cmd\" in this folder to see what went wrong.", Title, MessageBoxButtons.OK, MessageBoxIcon.Error);
         return 1;
     }
 
@@ -90,7 +90,7 @@ static class Launcher
         {
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url + "/api/shutdown");
             request.Method = "POST";
-            request.Headers.Add("X-Sonora", "1");
+            request.Headers.Add("X-Force-Studio", "1");
             request.ContentLength = 0;
             request.Timeout = 5000;
             request.GetResponse().Close();
@@ -101,7 +101,7 @@ static class Launcher
     static void Open(string url)
     {
         try { Process.Start(url); }
-        catch (Exception) { MessageBox.Show("Sonora Studio is running. Open " + url + " in your browser.", Title); }
+        catch (Exception) { MessageBox.Show("Force Studio v2 is running. Open " + url + " in your browser.", Title); }
     }
 
     static string FindOnPath(string file)

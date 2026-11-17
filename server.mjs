@@ -39,6 +39,8 @@ import { exportWav } from './wav-export.mjs';
 import { createGpuSession } from './gpu-session.mjs';
 import { createLoraTrainer } from './lora-trainer.mjs';
 import { createVastComfyBackend } from './vast-comfy-backend.mjs';
+import { createComfyYue2 } from './comfy-yue2.mjs';
+import { createComfyLauncher } from './comfy-launcher.mjs';
 import { createProviderSecrets } from './provider-secrets.mjs';
 import { createModelSetup } from './model-setup.mjs';
 import { createYue2Models } from './yue2-models.mjs';
@@ -53,10 +55,23 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_CONFIG = {
   port: 3210,
   comfyUrl: 'http://127.0.0.1:8188',
-  model: 'acestep_v1.5_xl_turbo_bf16.safetensors',
+  model: 'acestep_v1.5_turbo.safetensors',
   encoder: 'qwen_0.6b_ace15.safetensors',
-  planner: 'qwen_4b_ace15.safetensors',
+  planner: 'qwen_1.7b_ace15.safetensors',
   vae: 'ace_1.5_vae.safetensors',
+  // The studio opens on YuE2; ACE-Step 1.5 stays in the selector.
+  musicModel: 'yue2',
+  // YuE2 is made by ComfyUI's native nodes (engine 'comfy'); 'cpp' and 'python' keep the older local engines.
+  yue2: {
+    engine: 'comfy',
+    comfy: {
+      autoStart: true,
+      checkpoint: 'yue2_3b_bf16.safetensors',
+      audioEncoder: 'sheetsage2_bf16.safetensors',
+      steps: 32,
+      mp3Quality: 'V0',
+    },
+  },
 };
 const PHASES = {
   1: 'Loading model',
@@ -86,7 +101,7 @@ function comfyBaseDirectory(stats) {
 export function createStudio(
   config,
   {
-    dataDir = process.env.SONORA_DATA_DIR || path.join(ROOT, 'data'),
+    dataDir = process.env.FORCE_STUDIO_DATA_DIR || path.join(ROOT, 'data'),
     pollMs = 2500,
     audioTask,
     labTask,
@@ -105,6 +120,8 @@ export function createStudio(
   const savedProviders = fs.existsSync(providerFile) ? JSON.parse(fs.readFileSync(providerFile, 'utf8')) : {};
   const localUrlValue = savedProviders.comfyUrl || config.comfyUrl || 'http://127.0.0.1:8188';
   let localModelsRoot = typeof savedProviders.comfyRoot === 'string' ? savedProviders.comfyRoot : '';
+  // The ACE-Step safetensors chosen in the composer, remembered across starts.
+  if (typeof savedProviders.aceModel === 'string' && savedProviders.aceModel) config.model = savedProviders.aceModel;
   const base = new URL(localUrlValue);
   if (
     !['http:', 'https:'].includes(base.protocol) ||
@@ -115,6 +132,51 @@ export function createStudio(
   )
     throw new Error('Invalid ComfyUI address.');
   let localComfyUrl = base.href.replace(/\/$/, '');
+// ComfyUI Desktop listens on 8000, the portable build on 8188, and other installs use their own port.
+// Unless the address was pinned by the user, keep following whichever server is actually running.
+const COMFY_PORTS = [8188, 8000, 8001, 7860, 8189];
+// A saved address on this machine is only a hint: if nothing answers there, look for the running server.
+const isLocalComfy = ['127.0.0.1', 'localhost', '::1'].includes(base.hostname);
+let lastComfyProbe = 0;
+async function probeComfyUrl() {
+  if (!isLocalComfy) return false;
+  // Nothing to do while the configured address answers; only a dead port is replaced.
+  try {
+    const current = await fetch(localComfyUrl + '/system_stats', { signal: AbortSignal.timeout(1000) });
+    if (current.ok) return false;
+  } catch {
+    /* the configured address is down, so look for another server */
+  }
+  if (Date.now() - lastComfyProbe < 15000) return false;
+  lastComfyProbe = Date.now();
+  let fallback = null;
+  for (const port of COMFY_PORTS) {
+    const candidate = 'http://127.0.0.1:' + port;
+    if (candidate === localComfyUrl) continue;
+    try {
+      const response = await fetch(candidate + '/system_stats', { signal: AbortSignal.timeout(1200) });
+      if (!response.ok) continue;
+      // Rules: two ComfyUI installs can be running (Desktop on 8000, a portable build on 8188) and only one may
+      // carry the YuE2 nodes, so a server that has them wins over one that merely answers.
+      const yue2 = await fetch(candidate + '/object_info/YuE2GenerateMusic', { signal: AbortSignal.timeout(2500) })
+        .then(r => r.json())
+        .then(json => Boolean(json && json.YuE2GenerateMusic))
+        .catch(() => false);
+      if (yue2) {
+        localComfyUrl = candidate;
+        return true;
+      }
+      fallback ||= candidate;
+    } catch {
+      /* that port has no ComfyUI */
+    }
+  }
+  if (fallback) {
+    localComfyUrl = fallback;
+    return true;
+  }
+  return false;
+}
   const providerSecrets = createProviderSecrets({ dataDir });
   const yue2Models = createYue2Models({
     onChange: () => broadcast(),
@@ -130,6 +192,11 @@ export function createStudio(
   // Rules: YuE2 settings entered in the app win over config.json; the engine files are only read after a restart.
   const yue2Settings = { endpointId: savedProviders.yue2?.endpointId || config.yue2?.endpointId || '' };
   let yue2CppConfig = savedProviders.yue2?.cpp || config.yue2?.cpp;
+  // @codedna: the YuE2 checkpoint file ComfyUI loads, chosen in the app (above Compose) and kept in providers.json.
+  let yue2Checkpoint =
+    savedProviders.yue2?.checkpoint ||
+    config.yue2?.comfy?.checkpoint ||
+    'yue2_3b_bf16.safetensors';
   function saveProviderSettings() {
     const safe = {
       comfyUrl: localComfyUrl,
@@ -139,7 +206,11 @@ export function createStudio(
         modelsReady: runpodSettings.modelsReady === true,
       },
       vast: { instanceId: vastSettings.instanceId || null },
-      yue2: { endpointId: yue2Settings.endpointId || '', ...(yue2CppConfig ? { cpp: yue2CppConfig } : {}) },
+      yue2: {
+        endpointId: yue2Settings.endpointId || '',
+        checkpoint: yue2Checkpoint,
+        ...(yue2CppConfig ? { cpp: yue2CppConfig } : {}),
+      },
     };
     fs.writeFileSync(providerFile + '.tmp', JSON.stringify(safe, null, 2), { mode: 0o600 });
     fs.renameSync(providerFile + '.tmp', providerFile);
@@ -193,6 +264,36 @@ export function createStudio(
     ...(runpodFetch ? { fetchImpl: runpodFetch } : {}),
     keyReader: runpodKeyReader || (() => providerSecrets.get('runpod')),
   });
+  // Rules: the studio's YuE2 songs are made by ComfyUI's own YuE2 nodes, using the same "Text to Music" and "Music Cover"
+  // workflows ComfyUI ships. The app brings ComfyUI up and installs those two workflows in its list at every start.
+  const yue2ComfySettings = config.yue2?.comfy || {};
+  // Rules: only config.yue2.engine asks for the ComfyUI engine (the app's DEFAULT_CONFIG sets it); a bare config keeps the old engines.
+  // One id per run, so a page left open notices that the app has been updated.
+  const buildId = Date.now().toString(36);
+const APP_VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
+  const comfyEngine = config.yue2?.engine === 'comfy';
+  const comfyYue2 = createComfyYue2(
+    {
+      url: () => comfyUrl(),
+      // A function: the model can change from the app without rebuilding the engine.
+      checkpoint: () => yue2Checkpoint,
+      audioEncoder: yue2ComfySettings.audioEncoder,
+      steps: yue2ComfySettings.steps,
+      mp3Quality: yue2ComfySettings.mp3Quality,
+      maxAbcTokens: yue2ComfySettings.maxAbcTokens,
+    },
+    { dataDir }
+  );
+  const comfyLauncher = createComfyLauncher(
+    {
+      url: () => comfyUrl(),
+      autoStart: yue2ComfySettings.autoStart !== false,
+      start: yue2ComfySettings.start,
+      installDir: yue2ComfySettings.installDir,
+      waitMs: yue2ComfySettings.waitMs,
+    },
+    { dataDir, log: message => console.log('[ComfyUI] ' + message) }
+  );
   // Rules: on this PC yue2.cpp handles generation when configured; SheetSage2 in the Python worker transcribes covers first.
   // Songs started with Python (no remote.engine) keep being followed by the Python backend.
   const yue2Python = createLocalYue2(config.yue2?.local, { dataDir });
@@ -217,7 +318,7 @@ export function createStudio(
         id: t.id,
         kind: 'Your LoRAs',
         name: t.name,
-        description: `Trained by you (${t.step} steps). Sonora adds the keyword «${t.trigger}» by itself at the start of the style.`,
+        description: `Trained by you (${t.step} steps). Force Studio v2 adds the keyword «${t.trigger}» by itself at the start of the style.`,
         author: 'te',
         page: '',
         trigger: t.trigger,
@@ -227,7 +328,7 @@ export function createStudio(
       })),
   });
   let yue2Trainer = null;
-  // Rules: on RunPod the LoRA live on the volume (installed by the worker's `adapters` action); Sonora remembers what the
+  // Rules: on RunPod the LoRA live on the volume (installed by the worker's `adapters` action); Force Studio v2 remembers what the
   // worker last reported in yue2-runpod-lora.json, so listing them never starts a GPU.
   const runpodLoraFile = path.join(dataDir, 'yue2-runpod-lora.json');
   const runpodLora = () => {
@@ -277,7 +378,9 @@ export function createStudio(
       .filter(t => t && !new RegExp(`(^|[^a-z0-9])${t}([^a-z0-9]|$)`, 'i').test(style));
     return words.length ? `${words.join(' ')}, ${style}` : style;
   }
-  const yue2Local = yue2Cpp.configured
+  const yue2Local = comfyEngine
+    ? comfyYue2
+    : yue2Cpp.configured
     ? {
         configured: true,
         health: () => yue2Cpp.health(),
@@ -312,7 +415,8 @@ export function createStudio(
     if (yue2Local.configured) return 'local';
     throw new Error('YuE2 is not configured: the RunPod endpoint and the PC Python are missing.');
   }
-  let musicModel = 'ace-step';
+  // The studio opens on YuE2 (src/DEFAULT_CONFIG says so); a bare createStudio() config keeps ACE-Step.
+  let musicModel = config.musicModel === 'yue2' ? 'yue2' : 'ace-step';
   const gpuSession = createGpuSession({
     dataDir,
     endpointId: runpodSettings.endpointId,
@@ -394,6 +498,9 @@ export function createStudio(
   // Rules: the verdict of the last quick test; the test job itself is deleted as soon as it ends (see finishQuickTest).
   let quickTest = { status: 'idle' };
   const snapshot = () => ({
+    // Changes on every start: an open page reloads itself when the app is rebuilt.
+    build: buildId,
+    version: APP_VERSION,
     jobs: db.jobs.filter(j => !j.test),
     quickTest,
     workspaces: db.workspaces,
@@ -402,6 +509,7 @@ export function createStudio(
     gpuSession: gpuSession.status(),
     trainer: trainer.snapshot(),
     yue2Training: yue2Trainer.snapshot(),
+    comfy: comfyLauncher.snapshot(),
     modelSetup: modelSetupView(),
     yue2Models: yue2Models.snapshot(),
     editor: editor.snapshot(),
@@ -420,7 +528,7 @@ export function createStudio(
     broadcastTimer ??= setTimeout(sendSnapshot, 120);
   };
   /**
-   * Rules: the model files Sonora finds on disk and the models ComfyUI lists can disagree (ComfyUI Desktop keeps its models in
+   * Rules: the model files Force Studio v2 finds on disk and the models ComfyUI lists can disagree (ComfyUI Desktop keeps its models in
    * its own base folder). When every file is present but ComfyUI still reports them missing, say so and name the folder.
    */
   const modelSetupView = () => {
@@ -434,7 +542,7 @@ export function createStudio(
       : ' ComfyUI Desktop keeps its models in its own base folder: enter that folder (the one that contains models), or move the files there. If it already is the folder ComfyUI reads, restart ComfyUI.';
     return {
       ...setup,
-      warning: `Sonora found the model files in ${path.join(setup.root || '', 'models')}, but ComfyUI does not see them.${where}`,
+      warning: `Force Studio v2 found the model files in ${path.join(setup.root || '', 'models')}, but ComfyUI does not see them.${where}`,
     };
   };
   let lastModelStatus = 'idle';
@@ -676,11 +784,17 @@ export function createStudio(
   }
   async function checkHealth() {
     lastHealth = Date.now();
+    // ComfyUI Desktop serves on 8000 and the portable build on 8188: follow whichever one actually runs.
+    await probeComfyUrl();
     if (musicModel === 'yue2') {
       await refreshRemoteLora();
       // Rules: the RunPod endpoint decides readiness when there is one; a song made on this PC skips this check at submit time.
+      const localHealth = async () => (yue2Settings.endpointId ? yue2Runpod : yue2Local).health();
+      let measured = await localHealth();
+      // ComfyUI Desktop serves on 8000 and the portable build on 8188: follow whichever one actually runs.
+      if (!measured.online && (await probeComfyUrl())) measured = await localHealth();
       health = {
-        ...(await (yue2Settings.endpointId ? yue2Runpod : yue2Local).health()),
+        ...measured,
         backend: 'yue2',
         model: 'YuE2-3B',
         fullAvailable: true,
@@ -691,8 +805,10 @@ export function createStudio(
           ...health,
           online: false,
           ready: false,
-          message: 'YuE2 is not configured: the RunPod endpoint and the PC Python are missing.',
+          message: 'YuE2 is not configured.',
         };
+      // Rules: the app brings ComfyUI up itself; the check only asks, it never waits (the launcher throttles its retries).
+      if (comfyEngine && !health.ready) void comfyLauncher.ensure().then(() => broadcast()).catch(() => {});
       broadcast();
       return health;
     }
@@ -734,6 +850,11 @@ export function createStudio(
       const listed = (node, key) => info[node]?.input?.required?.[key]?.[0];
       const has = (node, key, value) => listed(node, key)?.includes(value);
       // Rules: models kept in sub-folders are found by file name; the resolved names are used for ComfyUI only, never for RunPod.
+      // The XL diffusion models are trained with the 4B planner, the standard ones with the 1.7B: pair them here so a
+      // restored model choice is paired too, not only the one picked in the composer.
+      const planners = listed('DualCLIPLoader', 'clip_name2') || [];
+      const wantedPlanner = String(config.model).includes('_xl_') ? 'qwen_4b_ace15.safetensors' : 'qwen_1.7b_ace15.safetensors';
+      if (planners.includes(wantedPlanner) && config.planner !== wantedPlanner) config.planner = wantedPlanner;
       resolvedNames = {
         model: resolveModelName(config.model, listed('UNETLoader', 'unet_name')),
         encoder: resolveModelName(config.encoder, listed('DualCLIPLoader', 'clip_name1')),
@@ -757,6 +878,13 @@ export function createStudio(
         message: missing.length ? `Missing: ${missing.join(', ')}` : 'Ready to create',
         gpu: stats.devices?.[0]?.name,
         model: config.model,
+        encoder: resolvedNames.encoder,
+        planner: resolvedNames.planner,
+        // The safetensors ComfyUI can load, so the composer can offer them.
+        models: listed('UNETLoader', 'unet_name') || [],
+        encoders: listed('DualCLIPLoader', 'clip_name1') || [],
+        planners: listed('DualCLIPLoader', 'clip_name2') || [],
+        vaes: listed('VAELoader', 'vae_name') || [],
         ...(comfyBaseDirectory(stats) ? { comfyBase: comfyBaseDirectory(stats) } : {}),
         missingModels: [
           !has('UNETLoader', 'unet_name', resolvedNames.model) && {
@@ -893,7 +1021,13 @@ export function createStudio(
       for (const job of active.filter(j => ['runpod', 'yue2'].includes(j.backend))) {
         const remoteBackend = job.backend === 'yue2' ? yue2Host(job.remote?.host) : runpod;
         const provider =
-          job.backend === 'yue2' ? (job.remote?.host === 'local' ? 'YuE2 on the PC' : 'YuE2') : 'RunPod';
+          job.backend === 'yue2'
+            ? job.remote?.engine === 'comfy'
+              ? 'ComfyUI'
+              : job.remote?.host === 'local'
+                ? 'YuE2 on the PC'
+                : 'YuE2'
+            : 'RunPod';
         try {
           const result = job.remoteAudio
             ? { status: 'COMPLETED', output: job.remoteAudio }
@@ -1210,7 +1344,7 @@ export function createStudio(
       phase:
         selectedBackend === 'yue2'
           ? yueHost === 'local'
-            ? 'Starting YuE2 on the PC'
+            ? 'Opening the workflow in ComfyUI'
             : 'Sending to YuE2'
           : generationBackend === 'runpod'
             ? 'Sending to RunPod'
@@ -1236,6 +1370,13 @@ export function createStudio(
             lyrics: job.input.lyrics,
             cot: job.input.yueCot ?? 'full',
             seed: job.input.seed,
+            duration: job.input.duration,
+            // The remix dials that reach the ComfyUI graph (see rework()).
+            ...(job.input.yueVariation !== undefined ? { variation: job.input.yueVariation } : {}),
+            ...(Number.isInteger(job.input.yueSteps) ? { steps: job.input.yueSteps } : {}),
+            ...(Number.isFinite(job.input.yueTemperature) ? { temperature: job.input.yueTemperature } : {}),
+            ...(Number.isFinite(job.input.yueTopP) ? { topP: job.input.yueTopP } : {}),
+            ...(Number.isFinite(job.input.yueRepetition) ? { repetition: job.input.yueRepetition } : {}),
             ...(job.input.yueMelodyFreedom ? { melodyFreedom: job.input.yueMelodyFreedom } : {}),
             ...(job.input.abc ? { abc: job.input.abc } : {}),
             ...yueAdapterFields(job.input.yueAdapters, yueHost),
@@ -1246,18 +1387,18 @@ export function createStudio(
           change(job, {
             remote,
             status: 'queued',
-            phase: yueHost === 'local' ? 'Queued YuE2 on the PC' : 'Queued YuE2',
+            phase: yueHost === 'local' ? 'Queued in ComfyUI' : 'Queued YuE2',
           });
           continue;
         }
-        const source = extra.rework ? { audio: `Sonora/${job.id}.mp3`, denoise: extra.rework.denoise } : null;
+        const source = extra.rework ? { audio: `ForceStudioV2/${job.id}.mp3`, denoise: extra.rework.denoise } : null;
         const prompt = buildWorkflow(
           job.input,
           job.input.seed,
           job.id,
           job.backend === 'runpod' ? config : { ...config, ...resolvedNames },
           referenceFile || (referenceAudio && extra.sourceFile && job.backend === 'runpod')
-            ? `Sonora/${job.id}.mp3`
+            ? `ForceStudioV2/${job.id}.mp3`
             : referenceAudio,
           source
         );
@@ -1354,25 +1495,101 @@ export function createStudio(
     const length = window.windowEnd - window.windowStart;
     if (length < 10 || length > 300)
       throw new Error('The duration to process must be between 10 and 300 seconds.');
-    const input = validateInput({
-      ...original.input,
-      // Rules: when the result is sung, the style must not still say "no vocals" (the source may have been instrumental).
-      tags: instrumental ? tags : withoutInstrumentalWords(tags),
-      lyrics: instrumental ? original.input.lyrics || '' : lyrics,
-      instrumental,
-      referenceId: undefined,
-      avoid: typeof body.avoid === 'string' ? body.avoid.slice(0, 500) : original.input.avoid,
-      title: `${original.title} · ${mode === 'remix' ? 'remix' : 'ritocco'}`.slice(0, 100),
-      durationMode: 'manual',
-      duration: Math.ceil(length),
-      durationOverrides: {},
-      variants: 1,
-      seed: typeof body.seed === 'number' ? body.seed : -1,
-      finish: body.finish === 'final' ? 'final' : 'fast',
-    });
     const sourceFile = path.join(dataDir, 'workflows', `${randomUUID()}-source.mp3`);
     fs.mkdirSync(path.dirname(sourceFile), { recursive: true });
     try {
+      // Rules: YuE2 has no audio-to-audio remix. A remix becomes a cover: the melody of the chosen window is
+      // transcribed (SheetSage2 in ComfyUI) and sung again with the new style and words; a repaint is impossible.
+      if (musicModel === 'yue2') {
+        if (mode === 'repaint')
+          throw new Error(
+            'YuE2 cannot change only a part of a song: it sings the whole song again. Use Remix, which makes a cover of this song.'
+          );
+        // The remix controls that matter here: keep the melody or let YuE2 write a new one, how freely it sings,
+        // and how many detail steps it takes.
+        const keepMelody = body.keepMelody !== false;
+        const variation = Math.max(0, Math.min(1, Number(body.variation ?? body.strength ?? 0.5)));
+        const steps = Number.isInteger(body.steps) ? Math.max(8, Math.min(96, body.steps)) : 32;
+        // Fine tuning of the singing itself: temperature, top-p and repetition penalty.
+        const tune = value => (Number.isFinite(value) ? Number(value) : null);
+        await encodeSource(flac, sourceFile, { start: window.windowStart, length });
+        let transcribed = null;
+        if (keepMelody) {
+          transcribed = await yue2Host(pickYue2Host(original.input.yueHost)).call(
+            {
+              action: 'transcribe',
+              localId: randomUUID(),
+              audio: fs.readFileSync(sourceFile).toString('base64'),
+              format: 'mp3',
+              chords: false,
+            },
+            900000
+          );
+          if (typeof transcribed.abc !== 'string' || !/^K:/m.test(transcribed.abc))
+            throw new Error('I cannot read the melody of this song: try another piece or another song.');
+        }
+        // The original stays in the library; the copy powers the cover player and «Reuse settings» of the new song.
+        const coversDir = path.join(dataDir, 'covers');
+        fs.mkdirSync(coversDir, { recursive: true });
+        fs.copyFileSync(path.join(dataDir, 'audio', `${id}.mp3`), path.join(coversDir, `${id}.mp3`));
+        fs.writeFileSync(
+          path.join(coversDir, `${id}.json`),
+          JSON.stringify({ title: original.title, seconds: Math.round(total) })
+        );
+        const input = validateInput({
+          ...original.input,
+          // Rules: a rework is made by the engine chosen now, not by the one the original song was made with.
+          musicModel,
+          loraId: undefined,
+          loraScale: undefined,
+          referenceId: undefined,
+          yueAdapters: undefined,
+          yueHarmony: undefined,
+          tags: instrumental ? tags : withoutInstrumentalWords(tags),
+          lyrics: instrumental ? original.input.lyrics || '' : lyrics,
+          instrumental,
+          avoid: typeof body.avoid === 'string' ? body.avoid.slice(0, 500) : original.input.avoid,
+          title: `${original.title} · cover`.slice(0, 100),
+          durationMode: 'manual',
+          duration: Math.ceil(length),
+          durationOverrides: {},
+          variants: 1,
+          seed: typeof body.seed === 'number' ? body.seed : -1,
+          finish: 'fast',
+          yueCot: keepMelody ? 'melody' : 'full',
+          // Rules: without the melody lock the transcribed score must not leak in from the source song.
+          abc: keepMelody ? transcribed.abc : undefined,
+          cover: { id, title: original.title, seconds: Math.round(total), chords: false },
+        });
+        // validateInput keeps only its own fields: the remix dials belong to the job after validation.
+        input.yueVariation = variation;
+        input.yueSteps = steps;
+        if (tune(body.temperature) !== null)
+          input.yueTemperature = Math.max(0.5, Math.min(2, tune(body.temperature)));
+        if (tune(body.topP) !== null) input.yueTopP = Math.max(0.5, Math.min(1, tune(body.topP)));
+        if (tune(body.repetition) !== null)
+          input.yueRepetition = Math.max(1, Math.min(2, tune(body.repetition)));
+        const [job] = await submit(input, null, null, original.workspaceId ?? GENERAL, { coverOf: id });
+        return job;
+      }
+      const input = validateInput({
+        ...original.input,
+        // Rules: a rework is made by the engine chosen now, not by the one the original song was made with.
+        musicModel,
+        // Rules: when the result is sung, the style must not still say "no vocals" (the source may have been instrumental).
+        tags: instrumental ? tags : withoutInstrumentalWords(tags),
+        lyrics: instrumental ? original.input.lyrics || '' : lyrics,
+        instrumental,
+        referenceId: undefined,
+        avoid: typeof body.avoid === 'string' ? body.avoid.slice(0, 500) : original.input.avoid,
+        title: `${original.title} · ${mode === 'remix' ? 'remix' : 'ritocco'}`.slice(0, 100),
+        durationMode: 'manual',
+        duration: Math.ceil(length),
+        durationOverrides: {},
+        variants: 1,
+        seed: typeof body.seed === 'number' ? body.seed : -1,
+        finish: body.finish === 'final' ? 'final' : 'fast',
+      });
       await encodeSource(flac, sourceFile, { start: window.windowStart, length });
       const rework = {
         mode,
@@ -1485,7 +1702,7 @@ export function createStudio(
         seed: body.seed ?? -1,
       });
       if (viaRunpod) {
-        // Rules: on RunPod the base travels inside the request as a 128k MP3, like a remix source (the worker reads Sonora/<job id>.mp3).
+        // Rules: on RunPod the base travels inside the request as a 128k MP3, like a remix source (the worker reads ForceStudioV2/<job id>.mp3).
         const sourceFile = path.join(dataDir, 'workflows', `${randomUUID()}-source.mp3`);
         fs.mkdirSync(path.dirname(sourceFile), { recursive: true });
         try {
@@ -1509,7 +1726,7 @@ export function createStudio(
         new Blob([fs.readFileSync(reference.file)], { type: 'audio/flac' }),
         referenceId + '.flac'
       );
-      form.append('subfolder', 'Sonora');
+      form.append('subfolder', 'Force Studio v2');
       form.append('type', 'input');
       form.append('overwrite', 'false');
       const response = await fetch(comfyUrl() + '/upload/image', {
@@ -1521,13 +1738,13 @@ export function createStudio(
       const uploaded = await response.json();
       if (
         uploaded.name !== referenceId + '.flac' ||
-        uploaded.subfolder !== 'Sonora' ||
+        uploaded.subfolder !== 'Force Studio v2' ||
         uploaded.type !== 'input'
       )
         throw new Error('ComfyUI returned an unexpected audio reference.');
       const [job] = await submit(
         input,
-        'Sonora/' + referenceId + '.flac',
+        'ForceStudioV2/' + referenceId + '.flac',
         id,
         original.workspaceId ?? GENERAL
       );
@@ -1552,7 +1769,7 @@ export function createStudio(
       (typeof e.code === 'string' && /^E[A-Z]+$/.test(e.code))
     ) {
       console.error(e);
-      return [500, 'Internal Sonora error. The details are in the server terminal.'];
+      return [500, 'Internal Force Studio v2 error. The details are in the server terminal.'];
     }
     if (/not found|no longer (available|knows)|not available(?! yet)/i.test(e.message))
       return [404, e.message];
@@ -1582,7 +1799,7 @@ export function createStudio(
       return;
     }
     const size = fs.statSync(file).size;
-    const headers = { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Cache-Control': 'private, max-age=0' };
+    const headers = { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Cache-Control': /javascript|text\/|svg/.test(type) ? 'no-store' : 'private, max-age=0' };
     if (downloadName)
       headers['Content-Disposition'] = `attachment; filename*=UTF-8''${encodeURIComponent(downloadName)}`;
     let start = 0,
@@ -1637,7 +1854,7 @@ export function createStudio(
       if (!['GET', 'HEAD'].includes(req.method)) {
         const origin = req.headers.origin;
         const expectedOrigin = isPublicHost ? publicOrigin.origin : 'http://' + host;
-        if (req.headers['x-sonora'] !== '1' || (origin && origin !== expectedOrigin)) {
+        if (req.headers['x-force-studio'] !== '1' || (origin && origin !== expectedOrigin)) {
           json(res, 403, { error: 'Request origin not allowed.' });
           return;
         }
@@ -1710,6 +1927,9 @@ export function createStudio(
           yue2Configured: yue2Configured(),
           yue2Runpod: !!yue2Settings.endpointId,
           yue2Local: yue2Local.configured,
+          // The ComfyUI this build uses for YuE2, with the two workflows it installs at every start.
+          yue2Comfy: comfyEngine,
+          comfy: { ...comfyLauncher.snapshot(), url: localComfyUrl },
           yue2MelodyFreedom: yue2Cpp.configured,
           yue2Lora: yue2Adapters.available || yue2Cpp.remote === true,
           yue2EngineRestart: yue2Cpp.configured && !yue2Cpp.remote,
@@ -1748,6 +1968,24 @@ export function createStudio(
         if (b.musicModel === 'yue2' && !yue2Configured())
           throw new Error('YuE2 is not configured: the RunPod endpoint and the PC Python are missing.');
         musicModel = b.musicModel;
+        json(res, 200, { ...(await checkHealth()), musicModel });
+        return;
+      }
+      // ACE-Step: pick which diffusion safetensors ComfyUI loads for the next songs.
+      if (req.method === 'POST' && url.pathname === '/api/ace/model') {
+        const b = await bodyOf(req);
+        const name = typeof b.model === 'string' ? b.model : '';
+        const info = await comfy('/object_info/UNETLoader');
+        const options = info?.UNETLoader?.input?.required?.unet_name?.[0] || [];
+        if (!name || !options.includes(name)) throw new Error('That model file is not listed by ComfyUI.');
+        config.model = name;
+        // Rules: the XL diffusion models need the 4B planner; the standard ones pair with the 1.7B.
+        const clips = await comfy('/object_info/DualCLIPLoader');
+        const planners = clips?.DualCLIPLoader?.input?.required?.clip_name2?.[0] || [];
+        const wanted = name.includes('_xl_') ? 'qwen_4b_ace15.safetensors' : 'qwen_1.7b_ace15.safetensors';
+        if (planners.includes(wanted)) config.planner = wanted;
+        savedProviders.aceModel = name;
+        fs.writeFileSync(providerFile, JSON.stringify(savedProviders, null, 2));
         json(res, 200, { ...(await checkHealth()), musicModel });
         return;
       }
@@ -1884,7 +2122,7 @@ export function createStudio(
                 label: 'ComfyUI',
                 status: 'warn',
                 detail: 'not reachable at ' + localComfyUrl,
-                hint: 'ACE-Step runs through ComfyUI: start it and keep it open, or use RunPod / Vast.ai. YuE2 does not need ComfyUI.',
+                hint: 'YuE2 runs through ComfyUI: the app starts it by itself. If it is not reachable, open the ComfyUI card below.',
               }
         );
         const listed = Object.entries(comfyListed);
@@ -1902,6 +2140,30 @@ export function createStudio(
               : { id: 'acestep', label: 'ACE-Step models', status: 'ok', detail: 'listed by ComfyUI' }
           );
         }
+        if (comfyEngine) {
+          const engine = await comfyYue2.health();
+          const workflows = comfyLauncher.snapshot().workflows;
+          items.push(
+            engine.ready
+              ? {
+                  id: 'yue2',
+                  label: 'YuE2 (ComfyUI)',
+                  status: 'ok',
+                  detail: `${engine.gpu || 'graphics card'} · workflows opened: ${workflows.installed || 0}/2`,
+                }
+              : {
+                  id: 'yue2',
+                  label: 'YuE2 (ComfyUI)',
+                  status: 'warn',
+                  detail: engine.online ? 'ComfyUI is running, YuE2 is not ready' : 'ComfyUI is not running yet',
+                  hint:
+                    engine.message ||
+                    'The app starts ComfyUI by itself. If it does not, open the "This PC · ComfyUI" card below.',
+                }
+          );
+          json(res, 200, { items });
+          return;
+        }
         const cpp = yue2CppConfig;
         const have = key => !!cpp?.[key] && fs.existsSync(cpp[key]);
         if (cpp?.remote) {
@@ -1916,7 +2178,7 @@ export function createStudio(
               : {
                   hint: yue2Cpp.configured
                     ? engine.message
-                    : 'Restart Sonora to start using the saved settings.',
+                    : 'Restart Force Studio v2 to start using the saved settings.',
                 }),
           });
         } else
@@ -1996,10 +2258,10 @@ export function createStudio(
         json(res, 200, {
           saved: true,
           message: nothing
-            ? 'YuE2 on this PC is cleared. Restart Sonora to apply it.'
+            ? 'YuE2 on this PC is cleared. Restart Force Studio v2 to apply it.'
             : b.remote === true
-              ? 'Saved. Restart Sonora, start yue-server on your other computer and open the SSH tunnel.'
-              : 'Files found and saved. Restart Sonora so the engine starts with them.',
+              ? 'Saved. Restart Force Studio v2, start yue-server on your other computer and open the SSH tunnel.'
+              : 'Files found and saved. Restart Force Studio v2 so the engine starts with them.',
         });
         return;
       }
@@ -2141,6 +2403,7 @@ export function createStudio(
           throw new Error('A quick test is already running.');
         if (open) db.jobs.splice(db.jobs.indexOf(open), 1);
         const probe = validateInput({
+          musicModel,
           title: 'Quick test',
           tags: 'calm solo piano, soft, simple melody',
           instrumental: true,
@@ -2237,6 +2500,40 @@ export function createStudio(
               ? await remoteList()
               : { available: yue2Adapters.available, adapters: yue2Adapters.list() }
         );
+        return;
+      }
+      // ComfyUI: read the launcher's state, start it now, or install (open) the two YuE2 workflows again.
+      if (req.method === 'GET' && url.pathname === '/api/comfy/status')
+        return json(res, 200, comfyLauncher.snapshot());
+      if (req.method === 'POST' && url.pathname === '/api/comfy/ensure') {
+        await bodyOf(req);
+        json(res, 200, await comfyLauncher.ensure());
+        return;
+      }
+      if (req.method === 'POST' && url.pathname === '/api/comfy/workflows') {
+        await bodyOf(req);
+        const workflows = await comfyLauncher.install();
+        broadcast();
+        json(res, 200, { workflows, message: `Opened ${workflows.installed} YuE2 workflows in ComfyUI.` });
+        return;
+      }
+      // The YuE2 checkpoint file: any model ComfyUI lists, saved so the next songs use it.
+      if (req.method === 'POST' && url.pathname === '/api/yue2/checkpoint') {
+        const b = await bodyOf(req);
+        const wanted = typeof b.checkpoint === 'string' ? b.checkpoint.trim() : '';
+        if (!/^[\w .()+-]+\.safetensors$/i.test(wanted)) throw new Error('Invalid model file name.');
+        const info = await comfy('/object_info/CheckpointLoaderSimple');
+        const schema = info.CheckpointLoaderSimple?.input?.required?.ckpt_name;
+        const listed = Array.isArray(schema?.[0])
+          ? schema[0]
+          : Array.isArray(schema?.[1]?.options)
+            ? schema[1].options
+            : [];
+        if (!listed.includes(wanted)) throw new Error('ComfyUI does not list this model file.');
+        yue2Checkpoint = wanted;
+        saveProviderSettings();
+        await checkHealth();
+        json(res, 200, { checkpoint: yue2Checkpoint });
         return;
       }
       if (req.method === 'POST' && url.pathname === '/api/yue2/engine/restart') {
@@ -2532,7 +2829,7 @@ export function createStudio(
         return;
       }
       if (req.method === 'POST' && url.pathname === '/api/shutdown') {
-        json(res, 200, { message: 'Sonora stopped. Jobs already sent continue in ComfyUI.' });
+        json(res, 200, { message: 'Force Studio v2 stopped. Jobs already sent continue in ComfyUI.' });
         setImmediate(close);
         return;
       }
@@ -2575,7 +2872,7 @@ export function createStudio(
           const kind = url.searchParams.get('kind'),
             format = url.searchParams.get('format') === 'mp3' ? 'mp3' : 'flac';
           let file = editor.media(id, kind, url.searchParams.get('id'));
-          const title = editor.title(id) || db.jobs.find(j => j.id === id)?.title || 'Sonora';
+          const title = editor.title(id) || db.jobs.find(j => j.id === id)?.title || 'Force Studio v2';
           if (format === 'mp3') {
             file = await editor.ensureMp3(file);
           }
@@ -2671,7 +2968,7 @@ export function createStudio(
             res,
             stems.media(id, name, format),
             format === 'flac' ? 'audio/flac' : 'audio/mpeg',
-            url.searchParams.has('download') ? `${getJob(id)?.title || 'Sonora'}-${name}.${format}` : null
+            url.searchParams.has('download') ? `${getJob(id)?.title || 'Force Studio v2'}-${name}.${format}` : null
           );
           return;
         }
@@ -2730,7 +3027,7 @@ export function createStudio(
           const kind = url.searchParams.get('kind'),
             format = url.searchParams.get('format') === 'mp3' ? 'mp3' : 'flac',
             file = lab.media(id, kind, url.searchParams.get('id'), format);
-          const title = lab.snapshot().sessions.find(s => s.id === id)?.title || 'Sonora',
+          const title = lab.snapshot().sessions.find(s => s.id === id)?.title || 'Force Studio v2',
             suffix = { render: 'master', reference: 'riferimento', source: 'originale' }[kind];
           sendFile(
             req,
@@ -2848,7 +3145,7 @@ export function createStudio(
             change(fresh, {
               remote,
               status: 'queued',
-              phase: host === 'local' ? 'Queued YuE2 on the PC' : 'Queued YuE2',
+              phase: host === 'local' ? 'Queued in ComfyUI' : 'Queued YuE2',
             });
           } catch (error) {
             change(fresh, { status: 'failed', phase: 'YuE2 error', error: error.message });
@@ -2932,7 +3229,7 @@ export function createStudio(
             change(fresh, {
               remote,
               status: 'queued',
-              phase: host === 'local' ? 'Queued YuE2 on the PC' : 'Queued YuE2',
+              phase: host === 'local' ? 'Queued in ComfyUI' : 'Queued YuE2',
             });
           } catch (error) {
             change(fresh, { status: 'failed', phase: 'YuE2 error', error: error.message });
@@ -3000,11 +3297,36 @@ export function createStudio(
           return;
         }
       }
+      // Appearances: the colour skins generated from style.css (style.css itself is the default).
+      const skinMatch = /^\/skins\/([a-z]+)\.css$/.exec(url.pathname);
+      if (skinMatch && ['GET', 'HEAD'].includes(req.method)) {
+        sendFile(req, res, path.join(ROOT, 'public', 'skins', skinMatch[1] + '.css'), 'text/css; charset=utf-8');
+        return;
+      }
+      // Appearances: the background images shipped with the app.
+      const walletMatch = /^\/wallets\/(bitcoin|ethereum|tether|tron|ripple|stellar|litecoin)\.png$/.exec(url.pathname);
+      if (walletMatch && ['GET', 'HEAD'].includes(req.method)) {
+        sendFile(req, res, path.join(ROOT, 'public', 'wallets', walletMatch[1] + '.png'), 'image/png');
+        return;
+      }
+      const backgroundMatch = /^\/backgrounds\/([a-z0-9-]+\.jpg)$/.exec(url.pathname);
+      if (backgroundMatch && ['GET', 'HEAD'].includes(req.method)) {
+        sendFile(
+          req,
+          res,
+          path.join(ROOT, 'public', 'backgrounds', backgroundMatch[1]),
+          'image/jpeg'
+        );
+        return;
+      }
       const staticFiles = {
         '/': ['index.html', 'text/html; charset=utf-8'],
         '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
         '/style.css': ['style.css', 'text/css; charset=utf-8'],
         '/favicon.svg': ['favicon.svg', 'image/svg+xml'],
+        '/favicon.png': ['favicon.png', 'image/png'],
+        '/logo-force-music.png': ['logo-force-music.png', 'image/png'],
+        '/logo-force-music-card.png': ['logo-force-music-card.png', 'image/png'],
         '/audio-lab-worklet.js': ['audio-lab-worklet.js', 'text/javascript; charset=utf-8'],
         '/fx-worklet.js': ['fx-worklet.js', 'text/javascript; charset=utf-8'],
         '/rec-worklet.js': ['rec-worklet.js', 'text/javascript; charset=utf-8'],
@@ -3042,6 +3364,16 @@ export function createStudio(
       };
       if (['GET', 'HEAD'].includes(req.method) && staticFiles[url.pathname]) {
         const [file, type] = staticFiles[url.pathname];
+        // Rules: the page is stamped with this run's build id, so a rebuilt app can never load cached JavaScript.
+        if (file === 'index.html') {
+          const html = fs
+            .readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8')
+            .replace('src="/app.js"', `src="/app.js?v=${buildId}"`)
+            .replace('href="/style.css"', `href="/style.css?v=${buildId}"`);
+          res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+          res.end(html);
+          return;
+        }
         sendFile(req, res, path.join(ROOT, 'public', file), type);
         return;
       }
@@ -3081,27 +3413,42 @@ export function createStudio(
     clearInterval(heartbeat);
     clearTimeout(reconnect);
     socket?.close();
+    comfyYue2.close();
     for (const res of clients) res.end();
     persist();
     return vast.close().then(() => new Promise(resolve => server.close(resolve)));
   }
-  return { server, close, checkHealth, poll };
+  /** Start ComfyUI (and open the two YuE2 workflows in it) without blocking the studio. */
+  const ensureComfy = () =>
+    comfyLauncher
+      .ensure()
+      .then(state => {
+        broadcast();
+        return state;
+      })
+      .catch(error => {
+        console.log('[ComfyUI] ' + error.message);
+        return null;
+      });
+  return { server, close, checkHealth, poll, ensureComfy };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const configPath = process.env.SONORA_CONFIG || path.join(ROOT, 'config.json');
+  const configPath = process.env.FORCE_STUDIO_CONFIG || path.join(ROOT, 'config.json');
   const config = {
     ...DEFAULT_CONFIG,
     ...(fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, 'utf8')) : {}),
   };
   const app = createStudio(config);
   app.server.on('error', err => {
-    console.error(err.code === 'EADDRINUSE' ? 'Sonora is already open, or the port is in use.' : err.message);
+    console.error(err.code === 'EADDRINUSE' ? 'Force Studio v2 is already open, or the port is in use.' : err.message);
     process.exit(1);
   });
   app.server.listen(config.port, '127.0.0.1', () => {
-    console.log(`Sonora: http://127.0.0.1:${config.port}`);
+    console.log(`Force Studio v2: http://127.0.0.1:${config.port}`);
     app.checkHealth();
+    // The two YuE2 workflows are opened in ComfyUI while the window is still loading.
+    app.ensureComfy();
   });
   for (const signal of ['SIGINT', 'SIGTERM'])
     process.on(signal, () => app.close().then(() => process.exit(0)));

@@ -58,10 +58,10 @@ export function initLoraTrainer({ api, toast }) {
     [
       'cost',
       '6. GPU, costs and duration',
-      `<p>Creating the project and uploading the audio to Sonora does not start the GPU training. By pressing <strong>Start training</strong> you authorise the copy to RunPod, the preparation of the examples and the training: these operations can use GPU credit.</p>
-      <p>The trainer starts its own worker; <strong>you do not need to press Start GPU session</strong>, which is for generating songs. Stop that session first and wait for the generations to finish. Sonora prevents starting new trainings or new generations at the same time as a training.</p>
+      `<p>Creating the project and uploading the audio to Force Studio v2 does not start the GPU training. By pressing <strong>Start training</strong> you authorise the copy to RunPod, the preparation of the examples and the training: these operations can use GPU credit.</p>
+      <p>The trainer starts its own worker; <strong>you do not need to press Start GPU session</strong>, which is for generating songs. Stop that session first and wait for the generations to finish. Force Studio v2 prevents starting new trainings or new generations at the same time as a training.</p>
       <p>The training job limit is <strong>30 minutes</strong>. Copying the dataset and waiting for a GPU can add time: this is not a promise of completion within 30 minutes of the click. The first start can take minutes and GPU availability varies.</p>
-      <p>The trainer goes back to zero permanent workers after the job. The <strong>persistent storage stays paid</strong> as long as the volume exists. Check balance, usage and rates in the RunPod console; Sonora shows no cost estimate and sets no dollar limit.</p>`,
+      <p>The trainer goes back to zero permanent workers after the job. The <strong>persistent storage stays paid</strong> as long as the volume exists. Check balance, usage and rates in the RunPod console; Force Studio v2 shows no cost estimate and sets no dollar limit.</p>`,
     ],
     [
       'states',
@@ -72,7 +72,7 @@ export function initLoraTrainer({ api, toast }) {
       <dt>Preparation and training</dt><dd>The worker prepares the examples and trains the model. No epoch progress percentage is shown.</dd>
       <dt>LoRA ready</dt><dd>The completed adapter is available in the generation selector.</dd>
       <dt>Training interrupted / Cancelled</dt><dd>Read the project message. The audio stays kept; a partial checkpoint does not automatically become a selectable LoRA.</dd>
-      <dt>Uncertain receipt</dt><dd>Sonora does not know whether RunPod accepted the training. Check the job in the RunPod console before starting other jobs; Sonora does not resend it automatically.</dd>
+      <dt>Uncertain receipt</dt><dd>Force Studio v2 does not know whether RunPod accepted the training. Check the job in the RunPod console before starting other jobs; Force Studio v2 does not resend it automatically.</dd>
     </dl><p><strong>Stop training</strong> appears when the RunPod receipt is available and also lets you cancel the pending copy. Wait for the final state: cancelling does not return the credit already used.</p>
       <p>Closing the browser page does not cancel the job and does not stop GPU usage. You can come back to this section to check its status; to stop it use <strong>Stop training</strong>.</p>
       <p>During a job the dataset is locked. After a restart, a training already registered is checked without duplicating it; an interrupted copy can be retried when the message confirms that no training was sent. Any checkpoints stay on the volume, but resuming from a checkpoint is not available in this interface.</p>`,
@@ -80,7 +80,7 @@ export function initLoraTrainer({ api, toast }) {
     [
       'use',
       '8. Using and evaluating the model',
-      `<p>In <strong>Create music</strong>, choose <strong>RunPod</strong> and the project name in the <strong>LoRA</strong>. Incomplete models do not appear. Still write the musical description and the lyrics of the new song: the LoRA does not replace these fields. It is compatible with the XL Turbo model used by Sonora; loading it in local ComfyUI is not provided by this integration.</p>
+      `<p>In <strong>Create music</strong>, choose <strong>RunPod</strong> and the project name in the <strong>LoRA</strong>. Incomplete models do not appear. Still write the musical description and the lyrics of the new song: the LoRA does not replace these fields. It is compatible with the XL Turbo model used by Force Studio v2; loading it in local ComfyUI is not provided by this integration.</p>
       <p>To compare the result, generate a short example with the LoRA and one choosing <strong>No LoRA</strong>, keeping the lyrics, description, duration and seed the same. Listen to timbre, pronunciation, instrument coherence, noise and repetitions. Then try lyrics or a melody different from the examples: a good result on a single song does not prove good generalisation.</p>
       <p>In Create music, after choosing the LoRA, adjust <strong>LoRA strength</strong>: 0% uses the base model, 50% halves the adapter weight, 100% applies full strength. The perceived effect is not an exact percentage of the style in the song. If you hear little effect, review the examples before increasing the epochs. Songs are downloaded as <strong>MP3 or WAV</strong>.</p>`,
     ],
@@ -88,7 +88,7 @@ export function initLoraTrainer({ api, toast }) {
   const helpSection = (id, title, content) =>
     `<details class="trainer-help-topic" data-trainer-help="${id}" ${openHelp.has(id) ? 'open' : ''}><summary>${title}</summary><div>${content}</div></details>`;
   const help = () =>
-    `<details class="trainer-guide" data-trainer-help="guide" ${openHelp.has('guide') ? 'open' : ''}><summary>Complete guide · from audio to a song with a LoRA</summary><div class="trainer-guide-content"><p>This guide describes the functions currently available in Sonora. Open the topics you need.</p>${helpTopics.map(t => helpSection(...t)).join('')}<p class="trainer-guide-sources">Further reading: <a href="https://ace-step.github.io/ACE-Step-1.5/en/LoRA_Training_Tutorial" target="_blank" rel="noopener noreferrer">official ACE-Step guide</a> · <a href="https://www.runpod.io/pricing" target="_blank" rel="noopener noreferrer">RunPod rates</a>. Le istruzioni dei servizi originali possono includere opzioni che Sonora non espone.</p></div></details>`;
+    `<details class="trainer-guide" data-trainer-help="guide" ${openHelp.has('guide') ? 'open' : ''}><summary>Complete guide · from audio to a song with a LoRA</summary><div class="trainer-guide-content"><p>This guide describes the functions currently available in Force Studio v2. Open the topics you need.</p>${helpTopics.map(t => helpSection(...t)).join('')}<p class="trainer-guide-sources">Further reading: <a href="https://ace-step.github.io/ACE-Step-1.5/en/LoRA_Training_Tutorial" target="_blank" rel="noopener noreferrer">official ACE-Step guide</a> · <a href="https://www.runpod.io/pricing" target="_blank" rel="noopener noreferrer">RunPod rates</a>. Le istruzioni dei servizi originali possono includere opzioni che Force Studio v2 non espone.</p></div></details>`;
   root.addEventListener(
     'toggle',
     e => {
@@ -212,7 +212,7 @@ export function initLoraTrainer({ api, toast }) {
         for (const file of files) {
           const r = await fetch(`/api/trainer/${selected}/upload`, {
             method: 'POST',
-            headers: { 'X-Sonora': '1', 'X-Audio-Name': encodeURIComponent(file.name) },
+            headers: { 'X-Force-Studio': '1', 'X-Audio-Name': encodeURIComponent(file.name) },
             body: file,
           });
           const b = await r.json();

@@ -52,7 +52,7 @@ function fakeHub({ corrupt = null, rangeCalls = [] } = {}) {
 }
 
 const temp = t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-yue2-models-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-yue2-models-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   return dir;
 };
@@ -79,7 +79,7 @@ test('files are downloaded, verified and kept; existing files are never replaced
   for (const name of ['YuE2-3B-Q8_0.gguf', 'YuE2-Vae-F32.gguf'])
     assert.deepEqual(fs.readFileSync(path.join(dir, name)), bytesOf(name));
   assert.equal(
-    fs.readdirSync(dir).some(n => n.endsWith('.sonora-part')),
+    fs.readdirSync(dir).some(n => n.endsWith('.force-part')),
     false,
     'no partial file is left'
   );
@@ -103,7 +103,7 @@ test('a file that fails the checksum is removed and reported', async t => {
   const models = createYue2Models({ fetchImpl: fakeHub({ corrupt: 'YuE2-Vae-F32.gguf' }) });
   await assert.rejects(models.download({ dir, confirmed: true }), /Integrity check failed for YuE2-Vae-F32/);
   assert.equal(fs.existsSync(path.join(dir, 'YuE2-Vae-F32.gguf')), false);
-  assert.equal(fs.existsSync(path.join(dir, 'YuE2-Vae-F32.gguf.sonora-part')), false);
+  assert.equal(fs.existsSync(path.join(dir, 'YuE2-Vae-F32.gguf.force-part')), false);
   assert.equal(fs.existsSync(path.join(dir, 'YuE2-3B-Q8_0.gguf')), true, 'the file before it is kept');
   assert.equal(models.snapshot().status, 'error');
 });
@@ -112,7 +112,7 @@ test('an interrupted download resumes from the partial file', async t => {
   const dir = temp(t);
   const rangeCalls = [];
   const name = 'YuE2-3B-Q8_0.gguf';
-  fs.writeFileSync(path.join(dir, name + '.sonora-part'), bytesOf(name).subarray(0, 100));
+  fs.writeFileSync(path.join(dir, name + '.force-part'), bytesOf(name).subarray(0, 100));
   const models = createYue2Models({ fetchImpl: fakeHub({ rangeCalls }) });
   await models.download({ dir, confirmed: true });
   assert.deepEqual(rangeCalls, ['bytes=100-']);

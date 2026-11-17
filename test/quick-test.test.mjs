@@ -20,7 +20,7 @@ const config = {
 };
 
 test('quick test: runs a hidden 10 s job, keeps only the verdict and leaves nothing in the library', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-quick-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-quick-'));
   const history = {},
     submitted = [];
   let healthy = true;
@@ -75,7 +75,7 @@ test('quick test: runs a hidden 10 s job, keeps only the verdict and leaves noth
   const req = (route, method = 'GET', body) =>
     fetch(base + route, {
       method,
-      headers: { 'X-Sonora': '1', 'Content-Type': 'application/json' },
+      headers: { 'X-Force-Studio': '1', 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   const state = async () => (await req('/api/state')).json();

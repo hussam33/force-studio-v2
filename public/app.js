@@ -134,7 +134,7 @@ const yue = initYue2Ui({
 async function api(url, method = 'GET', body) {
   const r = await fetch(url, {
     method,
-    headers: method === 'GET' ? {} : { 'Content-Type': 'application/json', 'X-Sonora': '1' },
+    headers: method === 'GET' ? {} : { 'Content-Type': 'application/json', 'X-Force-Studio': '1' },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const value = await r.json();
@@ -262,7 +262,7 @@ function updateDuration(keepRows = false) {
 }
 function saveDraft() {
   try {
-    localStorage.setItem('sonora-draft-v1', JSON.stringify(getInput()));
+    localStorage.setItem('force-draft-v1', JSON.stringify(getInput()));
   } catch {}
 }
 function syncLoraScale() {
@@ -314,7 +314,7 @@ function fillInput(input) {
   saveDraft();
 }
 try {
-  const draft = JSON.parse(localStorage.getItem('sonora-draft-v1'));
+  const draft = JSON.parse(localStorage.getItem('force-draft-v1'));
   if (draft) fillInput(draft);
 } catch {}
 mode(instrumental);
@@ -409,7 +409,7 @@ form.addEventListener('submit', async e => {
         : 'Your song is in the queue.'
     );
     saveDraft();
-    $('#prompt-studio').dispatchEvent(new Event('sonora:song-created'));
+    $('#prompt-studio').dispatchEvent(new Event('force studio v2:song-created'));
   } catch (e) {
     $('#form-error').textContent = e.message;
     $('#form-error').hidden = false;
@@ -437,7 +437,7 @@ function setView(next) {
   lab.setActive(view === 'lab');
   if (view === 'editor' || view === 'lab' || view === 'mixer') audio.pause();
   $('#prompt-studio').hidden = view !== 'prompt';
-  if (view === 'prompt') $('#prompt-studio').dispatchEvent(new Event('sonora:prompt-open'));
+  if (view === 'prompt') $('#prompt-studio').dispatchEvent(new Event('force studio v2:prompt-open'));
   $$('[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   const name = {
     create: 'Create music',
@@ -542,6 +542,18 @@ function visibleJobs() {
   );
 }
 function render() {
+  // The app was rebuilt and restarted: an open page reloads so the UI and the code always match.
+  if (state.build) {
+    if (window.__forceBuild === undefined) window.__forceBuild = state.build;
+    else if (state.build !== window.__forceBuild) {
+      window.__forceBuild = state.build;
+      location.reload();
+      return;
+    }
+  }
+  paintAceModelPicker();
+  const version = $('#app-version');
+  if (version && state.version) version.textContent = 'v' + state.version;
   renderLocalModelSetup();
   renderQuickTest();
   renderYue2Models();
@@ -559,7 +571,7 @@ function render() {
   $('#music-model').value = yue2 ? 'yue2' : 'ace-step';
   $('#engine-model').textContent = yue2 ? 'YuE2-3B' : 'ACE-Step 1.5 XL Turbo';
   $('#music-model-note').textContent = yue2
-    ? 'YuE2 · on your PC (yue2.cpp) or on RunPod. It first writes the melody and chords, which you can change, then sings the lyrics. On the PC you can use YuE2 LoRAs. No remix or reference audio.'
+    ? 'YuE2 · made by ComfyUI on this PC with its YuE2 nodes. It can write the melody and chords first (a plan you can edit), then sing the lyrics. No remix or reference audio.'
     : 'ACE-Step · uses ComfyUI on this PC, RunPod or Vast.ai, and the LoRAs trained with this model.';
   $('#lora-select').disabled = yue2;
   if (yue2) $('#lora-select').value = '';
@@ -582,7 +594,7 @@ function render() {
         : 'your computer';
   if (h.backend && h.backend !== 'yue2') $('#generation-backend').value = h.backend;
   $('#generation-note').textContent = yue2
-    ? 'YuE2 follows this choice: the local option creates the song on this PC, RunPod on RunPod.'
+    ? 'YuE2 runs on this PC: the app starts ComfyUI and opens its two YuE2 workflows in the background.'
     : h.backend === 'runpod'
       ? 'Generation uses your RunPod account and credits.'
       : h.backend === 'vast'
@@ -1080,7 +1092,7 @@ events.onerror = () => {
     ...state.health,
     ready: false,
     online: false,
-    message: 'Connection to Sonora lost. Reconnecting automatically…',
+    message: 'Connection to Force Studio v2 lost. Reconnecting automatically…',
   };
   render();
 };
@@ -1101,11 +1113,11 @@ function newSong(confirmed = false) {
   durationOverrides = {};
   durationSignature = '';
   try {
-    localStorage.removeItem('sonora-draft-v1');
+    localStorage.removeItem('force-draft-v1');
   } catch {}
   mode(false);
   saveDraft();
-  $('#prompt-studio').dispatchEvent(new Event('sonora:prompt-reset'));
+  $('#prompt-studio').dispatchEvent(new Event('force studio v2:prompt-reset'));
   toast('New song: everything starts from scratch.');
 }
 $('#new-song').addEventListener('click', () => newSong());
@@ -1273,12 +1285,12 @@ $('#local-model-check').addEventListener('click', async event => {
         ? `${plan.files.filter(file => file.status === 'missing').length} model file(s) are missing (${modelSize(plan.totalBytes)} to download). Keep at least 22 GB free for the complete ACE-Step XL package.`
         : 'All four ACE-Step model files are present.',
     };
-    renderLocalModelSetup();
+  renderLocalModelSetup();
     providerStatus('local-provider-status', 'ComfyUI folder saved.');
   } catch (e) {
     providerStatus('local-provider-status', e.message, true);
     state.modelSetup = { ...state.modelSetup, status: 'error', message: e.message };
-    renderLocalModelSetup();
+  renderLocalModelSetup();
   } finally {
     button.disabled = false;
   }
@@ -1301,11 +1313,11 @@ $('#local-model-download').addEventListener('click', async event => {
         status: 'ready',
         message: 'All four ACE-Step model files are present.',
       };
-      renderLocalModelSetup();
+  renderLocalModelSetup();
       return;
     }
     const confirmed = window.confirm(
-      `Download ${missing.length} missing ACE-Step model file(s) (${modelSize(size)}) to the selected ComfyUI models folders?\n\nThis may take a while and needs at least 22 GB of free disk space for a full setup. Sonora downloads only the model weights; it will not change ComfyUI, custom nodes, or settings.`
+      `Download ${missing.length} missing ACE-Step model file(s) (${modelSize(size)}) to the selected ComfyUI models folders?\n\nThis may take a while and needs at least 22 GB of free disk space for a full setup. Force Studio v2 downloads only the model weights; it will not change ComfyUI, custom nodes, or settings.`
     );
     if (!confirmed) return;
     await api('/api/models/download', 'POST', { confirmed: true });
@@ -1316,11 +1328,11 @@ $('#local-model-download').addEventListener('click', async event => {
       message: 'Download starting…',
       completedBytes: 0,
     };
-    renderLocalModelSetup();
+  renderLocalModelSetup();
   } catch (e) {
     providerStatus('local-provider-status', e.message, true);
     state.modelSetup = { ...state.modelSetup, status: 'error', message: e.message };
-    renderLocalModelSetup();
+  renderLocalModelSetup();
   } finally {
     button.disabled = false;
   }
@@ -1627,12 +1639,12 @@ $('#gpu-session-toggle').addEventListener('click', async event => {
 drawWave();
 
 try {
-  workspace = localStorage.getItem('sonora-workspace') || 'general';
+  workspace = localStorage.getItem('force-workspace') || 'general';
 } catch {}
 function chooseWorkspace(id) {
   workspace = id;
   try {
-    localStorage.setItem('sonora-workspace', id);
+    localStorage.setItem('force-workspace', id);
   } catch {}
   signature = '';
   $('#workspace').dataset.key = '';
@@ -1673,3 +1685,295 @@ $('#workspace-delete').addEventListener('click', async () => {
     toast(e.message);
   }
 });
+
+/* ---------- ComfyUI · YuE2 (this build): is ComfyUI up, and are the two workflows open in it ---------- */
+const comfyStatus = $('#comfy-yue2-status');
+async function paintComfyYue2() {
+  if (!comfyStatus) return;
+  try {
+    const config = await (await fetch('/api/config')).json();
+    const comfy = config.comfy || {};
+    const workflows = comfy.workflows || {};
+    if (comfy.ready) {
+      const files = Array.isArray(workflows.files) && workflows.files.length ? ` — ${workflows.files.join(', ')}` : '';
+      comfyStatus.textContent = `ComfyUI is running at ${comfy.url}. YuE2 workflows open in its list: ${workflows.installed || 0}/2${files}.`;
+    } else {
+      comfyStatus.textContent = comfy.message || 'ComfyUI is starting…';
+    }
+  } catch (error) {
+    comfyStatus.textContent = 'Cannot read the ComfyUI state: ' + error.message;
+  }
+}
+$('#comfy-yue2-open')?.addEventListener('click', async () => {
+  try {
+    const config = await (await fetch('/api/config')).json();
+    window.open(config.comfy?.url || config.comfyUrl || 'http://127.0.0.1:8188', '_blank', 'noopener');
+  } catch (error) {
+    toast(error.message);
+  }
+});
+$('#comfy-yue2-workflows')?.addEventListener('click', async () => {
+  try {
+    const result = await api('/api/comfy/workflows', 'POST', {});
+    toast(result.message || 'Workflows opened in ComfyUI.');
+    await paintComfyYue2();
+  } catch (error) {
+    toast(error.message);
+  }
+});
+paintComfyYue2();
+setInterval(paintComfyYue2, 10000);
+
+
+/* ---------- Appearances: a background blended under the skin ---------- */
+const APPEARANCES = [
+  { file: '', name: 'None' },
+  { file: 'bg-neon.jpg', name: 'Neon shards' },
+  { file: 'bg-tokyo.jpg', name: 'Tokyo night' },
+  { file: 'bg-vestrahorn.jpg', name: 'Vestrahorn' },
+  { file: 'bg-orbit.jpg', name: 'Orbit' },
+  { file: 'bg-nyc.jpg', name: 'New York' },
+  { file: 'bg-ridge.jpg', name: 'Ridgeline' },
+  { file: 'bg-yosemite.jpg', name: 'Yosemite' },
+  { file: 'bg-goldengate.jpg', name: 'Golden Gate' },
+  { file: 'bg-hoodoos.jpg', name: 'Hoodoos' },
+  { file: 'bg-ember.jpg', name: 'Ember' },
+  { file: 'bg-fuji-night.jpg', name: 'Fuji at night' },
+  { file: 'bg-cinque-terre.jpg', name: 'Cinque Terre' },
+  { file: 'bg-alps.jpg', name: 'Alpine night' },
+  { file: 'bg-forest-fog.jpg', name: 'Forest fog' },
+  { file: 'bg-redwoods.jpg', name: 'Redwoods' },
+  { file: 'bg-alaska.jpg', name: 'Alaska' },
+  { file: 'bg-braies.jpg', name: 'Lago di Braies' },
+  { file: 'bg-tuscany.jpg', name: 'Tuscany' },
+  { file: 'bg-pagoda.jpg', name: 'Chureito pagoda' },
+  { file: 'bg-antelope.jpg', name: 'Antelope stars' },
+  { file: 'bg-moon.jpg', name: 'Moon' },
+  { file: 'bg-volcano.jpg', name: 'Volcano' },
+  { file: 'bg-maui.jpg', name: 'Maui coast' },
+  { file: 'bg-forest-trail.jpg', name: 'Forest trail' },
+  { file: 'bg-seljalandsfoss.jpg', name: 'Seljalandsfoss' },
+  { file: 'bg-star-lake.jpg', name: 'Star lake' },
+  { file: 'bg-switchback.jpg', name: 'Switchbacks' },
+  { file: 'bg-neon-sign.jpg', name: 'Do something great' },
+];
+const APPEARANCE_KEY = 'force.appearance';
+const appearance = { file: '', dim: 60 };
+function paintAppearanceClass() {
+  document.body.classList.toggle('has-appearance', !!appearance.file);
+}
+function paintAppearance() {
+  const root = document.documentElement;
+  root.style.setProperty('--app-bg-image', appearance.file ? `url("/backgrounds/${appearance.file}")` : 'none');
+  root.style.setProperty('--bg-dim', String(appearance.dim / 100));
+  paintAppearanceClass();
+  const label = $('#appearance-dim-label');
+  if (label) label.textContent = `${appearance.dim}%`;
+  const dim = $('#appearance-dim');
+  if (dim) dim.value = String(appearance.dim);
+  for (const tile of document.querySelectorAll('.appearance-tile'))
+    tile.classList.toggle('selected', (tile.dataset.file || '') === appearance.file);
+}
+function saveAppearance() {
+  try {
+    localStorage.setItem(APPEARANCE_KEY, JSON.stringify(appearance));
+  } catch {
+    /* a private window may refuse storage */
+  }
+  paintAppearance();
+}
+function buildAppearanceGrid() {
+  const grid = $('#appearance-grid');
+  if (!grid || grid.dataset.built) return;
+  grid.dataset.built = '1';
+  grid.replaceChildren(
+    ...APPEARANCES.map(item => {
+      const tile = document.createElement('button');
+      tile.type = 'button';
+      tile.className = 'appearance-tile';
+      tile.dataset.file = item.file;
+      if (!item.file) tile.dataset.none = '1';
+      else tile.style.backgroundImage = `url("/backgrounds/${item.file}")`;
+      const name = document.createElement('span');
+      name.textContent = item.name;
+      tile.append(name);
+      tile.addEventListener('click', () => {
+        appearance.file = item.file;
+        saveAppearance();
+      });
+      return tile;
+    })
+  );
+}
+try {
+  Object.assign(appearance, JSON.parse(localStorage.getItem(APPEARANCE_KEY) || '{}'));
+} catch {
+  /* nothing saved yet */
+}
+buildAppearanceGrid();
+paintAppearance();
+$('#appearance-dim')?.addEventListener('input', event => {
+  appearance.dim = Number(event.target.value);
+  saveAppearance();
+});
+
+/* ---------- Colour skins: swap the stylesheet, keep the background ---------- */
+const SKINS = [
+  { id: 'cyberpunk', label: 'Cyberpunk', href: '/style.css', colors: ['#ff3fd0', '#25e6ff'] },
+  { id: 'blade', label: 'Blade', href: '/skins/blade.css', colors: ['#3f96ff', '#25e8ff'] },
+  { id: 'acid', label: 'Acid', href: '/skins/acid.css', colors: ['#91ff3f', '#25ff96'] },
+  { id: 'blood', label: 'Blood', href: '/skins/blood.css', colors: ['#ff3f48', '#ff8225'] },
+  { id: 'solar', label: 'Solar', href: '/skins/solar.css', colors: ['#ffab3f', '#f525ff'] },
+  { id: 'vapor', label: 'Vapor', href: '/skins/vapor.css', colors: ['#fa44d8', '#2ab6fa'] },
+  { id: 'mono', label: 'Mono', href: '/skins/mono.css', colors: ['#ab93a5', '#859a9f'] },
+];
+const SKIN_KEY = 'force.skin';
+let activeSkin = 'cyberpunk';
+function paintSkins() {
+  const current = SKINS.find(s => s.id === activeSkin) || SKINS[0];
+  const label = $('#appearance-skin-label');
+  if (label) label.textContent = current.label;
+  for (const chip of document.querySelectorAll('.skin-chip'))
+    chip.classList.toggle('selected', chip.dataset.skin === activeSkin);
+}
+function applySkin(id, save = true) {
+  const next = SKINS.find(s => s.id === id) || SKINS[0];
+  activeSkin = next.id;
+  const link = $('#skin-stylesheet');
+  if (link && !link.getAttribute('href').endsWith(next.href)) link.setAttribute('href', next.href);
+  paintSkins();
+  if (save)
+    try {
+      localStorage.setItem(SKIN_KEY, activeSkin);
+    } catch {
+      /* storage may be unavailable */
+    }
+}
+function buildSkinRow() {
+  const row = $('#appearance-skins');
+  if (!row || row.dataset.built) return;
+  row.dataset.built = '1';
+  row.replaceChildren(
+    ...SKINS.map(s => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'skin-chip';
+      chip.dataset.skin = s.id;
+      const dot = document.createElement('i');
+      dot.style.background = `linear-gradient(135deg, ${s.colors[0]}, ${s.colors[1]})`;
+      const name = document.createElement('span');
+      name.textContent = s.label;
+      chip.append(dot, name);
+      chip.addEventListener('click', () => applySkin(s.id));
+      return chip;
+    })
+  );
+}
+try {
+  activeSkin = localStorage.getItem(SKIN_KEY) || 'cyberpunk';
+} catch {
+  /* nothing saved yet */
+}
+buildSkinRow();
+applySkin(activeSkin, false);
+
+/* ---------- Donate: the wallets, their QR codes and copy buttons ---------- */
+const WALLETS = [
+  { id: 'bitcoin', name: 'Bitcoin', network: 'BTC · native segwit', address: 'bc1qlvslunfa2w3jsww527f5c8zmdw05e88pxfywtwk' },
+  { id: 'ethereum', name: 'Ethereum', network: 'ETH · ERC-20', address: '0xaf9146c5A50C3a7Dadbe748a73ed6Ec18894be9D' },
+  { id: 'tether', name: 'Tether USD', network: 'USDT · TRC-20', address: 'TCe2FbRyXXpUeyPHBvUCQEBhXX8WCRrj3e' },
+  { id: 'tron', name: 'Tron', network: 'TRX', address: 'TCe2FbRyXXpUeyPHBvUCQEBhXX8WCRrj3e' },
+  { id: 'ripple', name: 'XRP', network: 'XRP Ledger', address: 'rPmxUKiar29gzhx8N2WaS2YoCPZUgg4J51' },
+  { id: 'stellar', name: 'Stellar', network: 'XLM', address: 'GAOD5YB46SJQ3YS5L2VSZRPXQ3ZBPXDX5RI25HUXOOFEYVKBRCHPHF7I' },
+  { id: 'litecoin', name: 'Litecoin', network: 'LTC', address: 'LW91E5qqULfwW89RbcF9XaGZcuETA6vXgK' },
+];
+function buildDonateGrid() {
+  const grid = $('#donate-grid');
+  if (!grid || grid.dataset.built) return;
+  grid.dataset.built = '1';
+  grid.replaceChildren(
+    ...WALLETS.map(wallet => {
+      const card = document.createElement('div');
+      card.className = 'donate-card';
+      const qr = document.createElement('img');
+      qr.src = `/wallets/${wallet.id}.png`;
+      qr.alt = `${wallet.name} address QR code`;
+      qr.loading = 'lazy';
+      const meta = document.createElement('div');
+      meta.className = 'donate-meta';
+      const title = document.createElement('b');
+      title.textContent = wallet.name;
+      const net = document.createElement('small');
+      net.textContent = wallet.network;
+      const address = document.createElement('code');
+      address.className = 'donate-address';
+      address.textContent = wallet.address;
+      const copy = document.createElement('button');
+      copy.type = 'button';
+      copy.className = 'donate-copy';
+      copy.textContent = 'Copy';
+      copy.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(wallet.address);
+          copy.textContent = 'Copied';
+          toast(`${wallet.name} address copied.`);
+        } catch {
+          toast('Copy the address from the card.');
+        }
+        setTimeout(() => (copy.textContent = 'Copy'), 1600);
+      });
+      meta.append(title, net, address, copy);
+      card.append(qr, meta);
+      return card;
+    })
+  );
+}
+buildDonateGrid();
+const donateButton = $('#donate-button');
+if (donateButton) donateButton.addEventListener('click', () => $('#donate-dialog').showModal());
+
+/* ---------- ACE-Step: choose the diffusion safetensors ComfyUI loads ---------- */
+function paintAceModelPicker() {
+  const bar = $('#ace-model-bar');
+  if (!bar) return;
+  const health = state.health || {};
+  const on = health.musicModel === 'ace-step';
+  bar.hidden = !on;
+  if (!on) return;
+  const select = $('#ace-model');
+  if (!select) return;
+  const models = Array.isArray(health.models) ? health.models : [];
+  const key = models.join('|');
+  if (select.dataset.list !== key) {
+    select.dataset.list = key;
+    select.replaceChildren(...models.map(name => new Option(name, name)));
+  }
+  if (health.model && models.includes(health.model)) select.value = health.model;
+  const note = $('#ace-model-note');
+  if (note)
+    note.textContent = models.length
+      ? 'Used by the next songs.'
+      : 'ComfyUI lists no model file: check the models folder.';
+}
+const aceModelSelect = $('#ace-model');
+if (aceModelSelect)
+  aceModelSelect.addEventListener('change', async event => {
+    const select = event.target;
+    select.disabled = true;
+    try {
+      state.health = await api('/api/ace/model', 'POST', { model: select.value });
+      render();
+    } catch (e) {
+      toast(e.message);
+      render();
+    } finally {
+      select.disabled = false;
+    }
+  });
+
+/* ---------- Force Music Production: the artist's SoundCloud ---------- */
+const forceMusicButton = $('#force-music-button');
+if (forceMusicButton)
+  forceMusicButton.addEventListener('click', () => {
+    window.open('https://soundcloud.com/hussamalshehri8888', '_blank', 'noopener');
+  });

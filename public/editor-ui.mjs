@@ -23,7 +23,7 @@ export function initAudioEditor({ api, toast, pauseLibrary, openView, openLab })
       <div class="stem-track voice-track"><div class="stem-head"><div><span class="stem-mark">V</span><strong>Voice</strong></div><div style="display:flex;gap:10px;align-items:center;"><a id="edit-voice-download" class="text-button">Download FLAC</a><a id="edit-voice-download-mp3" class="text-button">Download MP3</a></div></div><label for="edit-voice-choice">Vocal track</label><select id="edit-voice-choice"><option value="original">Original separated voice</option></select><canvas id="edit-voice-wave" aria-label="Voice waveform"></canvas><div class="stem-controls"><button id="edit-voice-mute" class="pill-button subtle" aria-pressed="false">Mute voice</button><label for="edit-voice-gain">Voice volume</label><input id="edit-voice-gain" type="range" min="0" max="2" step="0.01" value="1"><output id="edit-voice-level">100%</output></div><div class="voice-offset"><label for="edit-offset">Voice alignment (ms)</label><input id="edit-offset" type="number" min="-10000" max="10000" step="10" value="0"><span class="field-hint">Positive = delay · negative = advance</span></div></div>
       <div class="editor-export"><button id="edit-export" class="pill-button">Export FLAC mix</button><button id="edit-reset" class="text-button">Reset the settings</button><span id="edit-export-status" class="field-hint"></span></div><div id="edit-mixes" class="editor-mixes"></div>
       <div class="editor-replace"><div class="section-eyebrow">A NEW PERFORMANCE</div><h2>Change the voice. Keep the backing.</h2><p>Import a recorded voice or try ACE-Step on the backing. In the mix we always use the separated backing kept here.</p><div class="editor-import"><label class="pill-button subtle" for="edit-import">Import an audio voice</label><input id="edit-import" type="file" accept="audio/*" hidden><span class="field-hint">WAV, FLAC, MP3 · maximum 150 MB / 10 minutes</span></div>
-        <details id="edit-cover-options"><summary>Generate a new voice with ACE-Step · experimental</summary><label for="edit-cover-tags">Desired style and voice</label><textarea id="edit-cover-tags" rows="3" maxlength="3000" placeholder="warm female vocals, jazz, soft intimate singing…"></textarea><label for="edit-cover-lyrics">Lyrics to sing</label><textarea id="edit-cover-lyrics" rows="8" maxlength="12000"></textarea><p class="field-hint">ACE generates a full cover using the backing as a reference. Sonora extracts the voice from it and places it over the kept backing. Melody, pronunciation and synchronisation may vary; the separation may leave residue.</p><button id="edit-cover" class="pill-button">Generate new voice</button><p id="edit-cover-status" class="field-hint" role="status"></p></details>
+        <details id="edit-cover-options"><summary>Generate a new voice with ACE-Step · experimental</summary><label for="edit-cover-tags">Desired style and voice</label><textarea id="edit-cover-tags" rows="3" maxlength="3000" placeholder="warm female vocals, jazz, soft intimate singing…"></textarea><label for="edit-cover-lyrics">Lyrics to sing</label><textarea id="edit-cover-lyrics" rows="8" maxlength="12000"></textarea><p class="field-hint">ACE generates a full cover using the backing as a reference. Force Studio v2 extracts the voice from it and places it over the kept backing. Melody, pronunciation and synchronisation may vary; the separation may leave residue.</p><button id="edit-cover" class="pill-button">Generate new voice</button><p id="edit-cover-status" class="field-hint" role="status"></p></details>
       </div><p class="editor-note">The originals stay in the library. The separated backing may contain residue of the voice; the new mix keeps its length and cuts the voice that goes past the end. If the sum exceeds the maximum level, the export lowers the overall volume to avoid distortion.</p></div>`;
   const $ = id => panel.querySelector('#' + id);
   let state = {},
@@ -243,7 +243,7 @@ export function initAudioEditor({ api, toast, pauseLibrary, openView, openLab })
       options += `<optgroup label="External songs">${externalSessions.map(s => `<option value="${s.id}">${esc(s.title || 'External song')}</option>`).join('')}</optgroup>`;
     }
     if (jobs.length) {
-      options += `<optgroup label="Sonora library">${jobs.map(j => `<option value="${j.id}">${esc(j.title)}</option>`).join('')}</optgroup>`;
+      options += `<optgroup label="Force Studio v2 library">${jobs.map(j => `<option value="${j.id}">${esc(j.title)}</option>`).join('')}</optgroup>`;
     }
     if ($('edit-track').innerHTML !== options) {
       $('edit-track').innerHTML = options;
@@ -435,7 +435,7 @@ export function initAudioEditor({ api, toast, pauseLibrary, openView, openLab })
       const r = await fetch(`/api/editor/${selected}/voice`, {
         method: 'POST',
         headers: {
-          'X-Sonora': '1',
+          'X-Force-Studio': '1',
           'X-Audio-Name': encodeURIComponent(file.name),
           'Content-Type': 'application/octet-stream',
         },
@@ -460,7 +460,7 @@ export function initAudioEditor({ api, toast, pauseLibrary, openView, openLab })
       const r = await fetch('/api/editor/import', {
         method: 'POST',
         headers: {
-          'X-Sonora': '1',
+          'X-Force-Studio': '1',
           'X-Audio-Name': encodeURIComponent(file.name),
           'Content-Type': 'application/octet-stream',
         },

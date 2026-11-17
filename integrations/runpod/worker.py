@@ -1,4 +1,4 @@
-"""Sonora RunPod pilot: persistent models, scoped Comfy jobs and audio outputs.
+"""Force Studio v2 RunPod pilot: persistent models, scoped Comfy jobs and audio outputs.
 
 This worker intentionally limits inline audio to short pilot results. Full-track
 downloads need a separate object-storage transport before UI integration.
@@ -14,8 +14,8 @@ import uuid
 import urllib.request
 
 VOLUME = Path('/runpod-volume')
-OUTPUT = VOLUME / 'sonora' / 'audio'
-STATE = VOLUME / 'sonora' / 'jobs'
+OUTPUT = VOLUME / 'force studio v2' / 'audio'
+STATE = VOLUME / 'force studio v2' / 'jobs'
 BASE = 'http://127.0.0.1:8188'
 
 
@@ -34,7 +34,7 @@ def write_json(file, data):
 
 def setup_models(job):
     import runpod
-    models = json.loads(os.environ['SONORA_MODELS'])
+    models = json.loads(os.environ['FORCE_STUDIO_MODELS'])
     result = []
     for item in models:
         parts = item['path'].split('/')
@@ -82,7 +82,7 @@ def validate_pilot(data):
         if n['class_type'] == 'LoraLoaderModelOnly':
             name = n['inputs'].get('lora_name', '')
             import re
-            if not re.fullmatch(r'sonora-[a-f0-9-]{36}\.safetensors', name):
+            if not re.fullmatch(r'force-[a-f0-9-]{36}\.safetensors', name):
                 raise ValueError('Invalid LoRA name.')
             from safetensors import safe_open
             from safetensors.torch import load_file
@@ -102,7 +102,7 @@ def validate_pilot(data):
                     pairs += 1
                     learned = learned or bool(b.count_nonzero().item())
             if not pairs or not learned: raise ValueError('LoRA contains no learned adapters.')
-        if n['class_type'] == 'LoadAudio' and n['inputs'].get('audio') != 'Sonora/' + local_id + '.mp3':
+        if n['class_type'] == 'LoadAudio' and n['inputs'].get('audio') != 'ForceStudioV2/' + local_id + '.mp3':
             raise ValueError('Source audio must be the one sent with this job.')
         if n['class_type'] in ('SaveAudioMP3', 'SaveAudio'):
             n['inputs']['filename_prefix'] = local_id + '/track'
@@ -134,12 +134,12 @@ def collect(entry, local_id, inline=False):
 def handler(job):
     data = job['input']
     if data.get('action') == 'training-upload':
-        if not os.environ.get('SONORA_TRAINER'):
+        if not os.environ.get('FORCE_STUDIO_TRAINER'):
             raise ValueError('This endpoint does not accept training datasets.')
         from trainer_worker import upload
         return upload(data)
     if data.get('action') == 'train':
-        if not os.environ.get('SONORA_TRAINER'):
+        if not os.environ.get('FORCE_STUDIO_TRAINER'):
             raise ValueError('This endpoint does not train models.')
         from trainer_worker import train
         return train(data, api, write_json, job)
@@ -189,7 +189,7 @@ def handler(job):
             raw = base64.b64decode(source, validate=True)
             if not 1024 <= len(raw) <= 8 * 1024 * 1024:
                 raise ValueError('Source audio size is not valid.')
-            target = Path('/comfyui/input/Sonora') / (local_id + '.mp3')
+            target = Path('/comfyui/input/Force Studio v2') / (local_id + '.mp3')
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(raw)
         prompt_id = str(uuid.uuid4())
@@ -215,10 +215,10 @@ if __name__ == '__main__':
     if not VOLUME.is_mount():
         raise RuntimeError('Persistent RunPod volume is required.')
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    if os.environ.get('SONORA_TRAINER'):
+    if os.environ.get('FORCE_STUDIO_TRAINER'):
         from trainer_worker import bootstrap
         bootstrap()
-    Path('/comfyui/extra_model_paths.yaml').write_text('sonora:\n  base_path: /runpod-volume/models/\n  diffusion_models: unet\n  text_encoders: clip\n  vae: vae\n  loras: loras\n')
+    Path('/comfyui/extra_model_paths.yaml').write_text('force studio v2:\n  base_path: /runpod-volume/models/\n  diffusion_models: unet\n  text_encoders: clip\n  vae: vae\n  loras: loras\n')
     process = subprocess.Popen(['python', '-u', '/comfyui/main.py', '--listen', '127.0.0.1',
                                 '--port', '8188', '--disable-auto-launch', '--output-directory', str(OUTPUT)], cwd='/comfyui')
     for _ in range(120):

@@ -448,7 +448,7 @@ export function createAudioLab({
       }
     );
   }
-  // Copy an exported master into the Sonora library as a new track; the source track is untouched.
+  // Copy an exported master into the Force Studio v2 library as a new track; the source track is untouched.
   function publish(s, render) {
     if (!addToLibrary) throw new Error('Library not available.');
     const dir = path.join(sessionDir(s.id), 'renders', render.id),

@@ -11,8 +11,8 @@
 //
 //
 // exports: createProviderSecrets
-// used_by: sonora-studio/gpu-session-watchdog.mjs
-//                   sonora-studio/server.mjs
+// used_by: force-studio-v2/gpu-session-watchdog.mjs
+//                   force-studio-v2/server.mjs
 // rules:   Never return secret values to the browser; write credentials atomically with owner-only permissions.
 // agent:   Codex - 2026-10-10 - Added local provider credential storage for the portfolio edition.
 import fs from 'node:fs';
@@ -26,7 +26,7 @@ export function createProviderSecrets({ dataDir, protector } = {}) {
   fs.mkdirSync(dataDir, { recursive: true });
   const file = path.join(dataDir, 'provider-secrets.json');
   const cipher =
-    protector || createFileProtector(process.env.SONORA_SECRET_FILE || path.join(dataDir, '.credential-key'));
+    protector || createFileProtector(process.env.FORCE_STUDIO_SECRET_FILE || path.join(dataDir, '.credential-key'));
 
   function read() {
     if (!fs.existsSync(file)) return {};

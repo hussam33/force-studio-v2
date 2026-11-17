@@ -43,7 +43,7 @@ test(
   'existing stems start a mixer session without separating a song and survive a restart',
   { skip: !hasFfmpeg },
   async t => {
-    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-import-stems-'));
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-import-stems-'));
     t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
     fs.mkdirSync(path.join(dataDir, 'audio'), { recursive: true });
     const tone = (file, hz) =>
@@ -96,7 +96,7 @@ test(
   'a separated song is mixed down to FLAC and MP3 with the requested balance',
   { skip: !hasFfmpeg },
   async t => {
-    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-stems-'));
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-stems-'));
     t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
     const id = '55555555-5555-4555-8555-555555555555';
     fs.mkdirSync(path.join(dataDir, 'audio'), { recursive: true });
@@ -277,7 +277,7 @@ test(
   'a real mixdown applies EQ, saturation, width and reverb with the same loudness law as the preview',
   { skip: !hasFfmpeg },
   async t => {
-    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-fx-'));
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-fx-'));
     t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
     const id = '88888888-8888-4888-8888-888888888888';
     fs.mkdirSync(path.join(dataDir, 'audio'), { recursive: true });
@@ -423,7 +423,7 @@ test(
   'external audio (an import or a recorded take) becomes a source for clips on any track',
   { skip: !hasFfmpeg },
   async t => {
-    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-ext-'));
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-ext-'));
     t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
     const id = '99999999-9999-4999-8999-999999999999';
     fs.mkdirSync(path.join(dataDir, 'audio'), { recursive: true });

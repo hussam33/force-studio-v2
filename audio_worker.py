@@ -2,7 +2,7 @@
 # description: Local stereo float stem writing, CPU separation and aligned lossless mixing.
 # rules: Use server-owned paths, preserve source audio and keep stereo floating samples intact.
 # agent: Codex - 2026-10-04 - Audio editor worker and stereo writer regression fix.
-"""Local audio processing. All paths come from Sonora, never from browser input."""
+"""Local audio processing. All paths come from Force Studio v2, never from browser input."""
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 os.environ['OMP_NUM_THREADS'] = '4'

@@ -268,13 +268,13 @@ export function initAudioLab({ api, toast, pauseLibrary, openView }) {
     labels();
     const v = values();
     if (live) live.chain.apply(v);
-    if (sessionId) store.set('sonora-lab-draft-' + sessionId, v);
+    if (sessionId) store.set('force-lab-draft-' + sessionId, v);
     scheduleRender();
     updateLevels();
     adviceView(session());
   }
   function presetOptions() {
-    const custom = store.get('sonora-lab-presets-v1') || {};
+    const custom = store.get('force-lab-presets-v1') || {};
     $('lab-preset').innerHTML =
       '<option value="">Load a preset…</option>' +
       Object.entries(PRESETS)
@@ -308,7 +308,7 @@ export function initAudioLab({ api, toast, pauseLibrary, openView }) {
       b.gain.value = 0;
       return b;
     });
-    const comp = new AudioWorkletNode(c, 'sonora-compressor', {
+    const comp = new AudioWorkletNode(c, 'force-compressor', {
       numberOfInputs: 1,
       numberOfOutputs: 1,
       outputChannelCount: [2],
@@ -965,7 +965,7 @@ export function initAudioLab({ api, toast, pauseLibrary, openView }) {
     const r = await fetch(url, {
       method: 'POST',
       headers: {
-        'X-Sonora': '1',
+        'X-Force-Studio': '1',
         'X-Audio-Name': encodeURIComponent(file.name),
         'Content-Type': 'application/octet-stream',
       },
@@ -1012,7 +1012,7 @@ export function initAudioLab({ api, toast, pauseLibrary, openView }) {
     }
     if (appliedSession !== s.id) {
       appliedSession = s.id;
-      setValues(store.get('sonora-lab-draft-' + s.id) || s.settings || NEUTRAL, { silent: true });
+      setValues(store.get('force-lab-draft-' + s.id) || s.settings || NEUTRAL, { silent: true });
     }
     if (!masterId || !s.renders.some(r => r.id === masterId)) masterId = s.renders[0]?.id || null;
     $('lab-export').disabled = working;
@@ -1071,7 +1071,7 @@ export function initAudioLab({ api, toast, pauseLibrary, openView }) {
   $('lab-preset').addEventListener('change', () => {
     const [kind, name] = $('lab-preset').value.split(/:(.*)/s);
     if (!kind) return;
-    const eq = kind === 'builtin' ? PRESETS[name][1] : (store.get('sonora-lab-presets-v1') || {})[name];
+    const eq = kind === 'builtin' ? PRESETS[name][1] : (store.get('force-lab-presets-v1') || {})[name];
     if (!eq) return;
     eq.forEach((v, i) => {
       $('lab-eq-' + i).value = v;
@@ -1081,9 +1081,9 @@ export function initAudioLab({ api, toast, pauseLibrary, openView }) {
   $('lab-preset-save').addEventListener('click', () => {
     const name = prompt('EQ preset name:')?.trim().slice(0, 40);
     if (!name) return;
-    const custom = store.get('sonora-lab-presets-v1') || {};
+    const custom = store.get('force-lab-presets-v1') || {};
     custom[name] = values().eq;
-    store.set('sonora-lab-presets-v1', custom);
+    store.set('force-lab-presets-v1', custom);
     presetOptions();
     $('lab-preset').value = 'custom:' + name;
     toast('Preset saved in this browser.');
@@ -1091,9 +1091,9 @@ export function initAudioLab({ api, toast, pauseLibrary, openView }) {
   $('lab-preset-delete').addEventListener('click', () => {
     const [kind, name] = $('lab-preset').value.split(/:(.*)/s);
     if (kind !== 'custom') return toast('Choose one of your presets to delete.');
-    const custom = store.get('sonora-lab-presets-v1') || {};
+    const custom = store.get('force-lab-presets-v1') || {};
     delete custom[name];
-    store.set('sonora-lab-presets-v1', custom);
+    store.set('force-lab-presets-v1', custom);
     presetOptions();
   });
   $('lab-source').addEventListener('change', () => void choose($('lab-source').value));

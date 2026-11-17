@@ -53,7 +53,7 @@ const wait = async (check, ms = 8000) => {
   }
 };
 function setup(t, cleanup = true) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-yue2-local-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-yue2-local-'));
   const script = path.join(dir, 'fake-yue.mjs');
   fs.writeFileSync(script, FAKE);
   if (cleanup)
@@ -167,7 +167,7 @@ test('the studio runs YuE2 on this PC when only the PC is configured', async t =
   const post = (route, body) =>
     fetch(base + route, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Sonora': '1' },
+      headers: { 'Content-Type': 'application/json', 'X-Force-Studio': '1' },
       body: JSON.stringify(body),
     });
   const config = await (await fetch(base + '/api/config')).json();

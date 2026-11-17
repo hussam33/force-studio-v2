@@ -46,7 +46,7 @@ function fakeFetch(url) {
 }
 
 test('model setup validates a real ComfyUI root and installs only a confirmed verified fixture', async t => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-comfy-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'force-comfy-'));
   fs.writeFileSync(path.join(root, 'main.py'), '# ComfyUI');
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const setup = createModelSetup({
@@ -68,15 +68,15 @@ test('model setup validates a real ComfyUI root and installs only a confirmed ve
 });
 
 test('model setup rejects folders without ComfyUI main.py', async t => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-not-comfy-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'force-not-comfy-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const setup = createModelSetup({ fetchImpl: fakeFetch, files: [model], manifestUrl });
   await assert.rejects(setup.inspect(root), /main.py/);
 });
 
 test('local model API validates and saves the ComfyUI root before showing the fixed model plan', async t => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-model-api-'));
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-comfy-api-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-model-api-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'force-comfy-api-'));
   fs.writeFileSync(path.join(root, 'main.py'), '# ComfyUI');
   const names = {
     model: 'model.safetensors',
@@ -122,7 +122,7 @@ test('local model API validates and saves the ComfyUI root before showing the fi
   const request = (route, body) =>
     fetch(base + route, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Sonora': '1' },
+      headers: { 'Content-Type': 'application/json', 'X-Force-Studio': '1' },
       body: JSON.stringify(body),
     });
   t.after(async () => {
@@ -148,7 +148,7 @@ test('local model API validates and saves the ComfyUI root before showing the fi
 });
 
 test('a ComfyUI Desktop base folder (models but no main.py) is accepted', async t => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-comfy-desktop-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'force-comfy-desktop-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'models'));
   const setup = createModelSetup({ fetchImpl: fakeFetch, files: [model], manifestUrl });
@@ -158,8 +158,8 @@ test('a ComfyUI Desktop base folder (models but no main.py) is accepted', async 
 });
 
 test('when every file is on disk but ComfyUI does not list them, the app says so and names ComfyUIs own folder', async t => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-model-warn-'));
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-comfy-warn-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-model-warn-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'force-comfy-warn-'));
   fs.writeFileSync(path.join(root, 'main.py'), '# ComfyUI');
   const names = {
     model: 'model.safetensors',
@@ -209,7 +209,7 @@ test('when every file is on disk but ComfyUI does not list them, the app says so
   const request = (route, body) =>
     fetch(base + route, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Sonora': '1' },
+      headers: { 'Content-Type': 'application/json', 'X-Force-Studio': '1' },
       body: JSON.stringify(body),
     });
   t.after(async () => {

@@ -7,7 +7,7 @@ import { Readable } from 'node:stream';
 import { createLoraTrainer } from '../lora-trainer.mjs';
 
 test('trainer persists datasets, verifies private upload receipts and never resubmits recovered training', async t => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-lora-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-lora-'));
   t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
   let submitted = 0,
     input,
@@ -23,7 +23,7 @@ test('trainer persists datasets, verifies private upload receipts and never resu
     },
     async trainingStatus() {
       return done
-        ? { status: 'COMPLETED', output: { loraName: `sonora-${input.projectId}.safetensors` } }
+        ? { status: 'COMPLETED', output: { loraName: `force-${input.projectId}.safetensors` } }
         : { status: 'IN_PROGRESS' };
     },
   };
@@ -31,7 +31,7 @@ test('trainer persists datasets, verifies private upload receipts and never resu
     dataDir,
     remote,
     endpointId: 'trainer-test',
-    publicOrigin: 'https://sonora.test',
+    publicOrigin: 'https://force studio v2.test',
     model: 'xl',
     probe: async () => 10,
     cpu: task => task(),
@@ -52,11 +52,11 @@ test('trainer persists datasets, verifies private upload receipts and never resu
   assert.throws(() => trainer.start(p.id, { epochs: 1 }), /The dataset is locked/);
   done = true;
   await trainer.poll();
-  assert.equal(trainer.lora(p.id), `sonora-${p.id}.safetensors`);
+  assert.equal(trainer.lora(p.id), `force-${p.id}.safetensors`);
 });
 
 test('trainer rejects unsupported files and missing sung lyrics before GPU submission', async t => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-lora-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-lora-'));
   t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
   const trainer = createLoraTrainer({ dataDir, remote: {}, probe: async () => 10, cpu: task => task() });
   const p = trainer.create({ name: 'Voice' }).projects[0];
@@ -68,7 +68,7 @@ test('trainer rejects unsupported files and missing sung lyrics before GPU submi
 });
 
 test('cancelling a queued dataset copy prevents training submission', async t => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-lora-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-lora-'));
   t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
   let rejectCopy,
     submitted = 0,
@@ -110,7 +110,7 @@ test('cancelling a queued dataset copy prevents training submission', async t =>
 });
 
 test('restart unlocks interrupted dataset copies but preserves uncertain training submissions', t => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-lora-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-lora-'));
   t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
   const options = { dataDir, remote: {}, endpointId: 'trainer-test' };
   const initial = createLoraTrainer(options),
@@ -129,7 +129,7 @@ test('restart unlocks interrupted dataset copies but preserves uncertain trainin
 });
 
 test('trainer copies annotated audio between projects and removes only dataset membership', async t => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-lora-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-lora-'));
   t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
   const options = { dataDir, remote: {}, probe: async () => 18, cpu: task => task() };
   let trainer = createLoraTrainer(options);
@@ -169,7 +169,7 @@ test('trainer copies annotated audio between projects and removes only dataset m
 });
 
 test('trainer rejects invalid or locked imports without changing datasets', async t => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-lora-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-lora-'));
   t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
   const trainer = createLoraTrainer({ dataDir, remote: {}, probe: async () => 10, cpu: task => task() });
   const source = trainer.create({ name: 'Source' }).projects[0];

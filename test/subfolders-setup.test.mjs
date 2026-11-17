@@ -27,8 +27,8 @@ const response = (value, url) => ({
 });
 
 async function studio(t, { config, listed }) {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-sub-setup-'));
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-sub-comfy-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-sub-setup-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'force-sub-comfy-'));
   fs.writeFileSync(path.join(root, 'main.py'), '# ComfyUI');
   const comfy = http.createServer((req, res) => {
     const route = new URL(req.url, 'http://localhost').pathname;
@@ -72,7 +72,7 @@ async function studio(t, { config, listed }) {
   const post = (route, body) =>
     fetch(base + route, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Sonora': '1' },
+      headers: { 'Content-Type': 'application/json', 'X-Force-Studio': '1' },
       body: JSON.stringify(body),
     });
   await post('/api/settings/local', { comfyUrl: url, comfyRoot: root });

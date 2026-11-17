@@ -17,7 +17,7 @@ const call = (url, method = 'GET', body) =>
         headers: {
           Host: target.host,
           Origin: target.origin,
-          'X-Sonora': '1',
+          'X-Force-Studio': '1',
           'Content-Type': 'application/json',
         },
       },
@@ -32,7 +32,7 @@ const call = (url, method = 'GET', body) =>
   });
 
 test('workspaces: create, rename, reject duplicates, protect General, move songs home on delete', async t => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-workspaces-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-workspaces-'));
   const jobId = '22222222-2222-4222-8222-222222222222';
   fs.writeFileSync(
     path.join(dataDir, 'library.json'),

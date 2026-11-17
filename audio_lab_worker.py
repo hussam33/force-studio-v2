@@ -1,8 +1,8 @@
 # @codedna
 # description: Isolated Audio Lab CPU worker: import, analysis, full-length mastering renders and MP3 export.
 # rules: Use server-owned paths, never modify the source, write results atomically and report JSON lines.
-# agent: Claude - 2026-10-04 - Audio Lab integration for Sonora.
-"""Audio Lab worker. All paths come from Sonora, never from browser input."""
+# agent: Claude - 2026-10-04 - Audio Lab integration for Force Studio v2.
+"""Audio Lab worker. All paths come from Force Studio v2, never from browser input."""
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 os.environ.setdefault('OMP_NUM_THREADS', '4')

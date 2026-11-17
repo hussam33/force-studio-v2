@@ -7,7 +7,7 @@ import { createGpuSession } from '../gpu-session.mjs';
 import { createRunpodBackend } from '../runpod-backend.mjs';
 
 test('GPU session records a fixed expiry, survives restart and retries uncertain stops', async t => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-session-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-session-'));
   t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
   let now = 1000,
     min = 0,
@@ -43,7 +43,7 @@ test('GPU session records a fixed expiry, survives restart and retries uncertain
 });
 
 test('uncertain GPU activation is durably compensated rather than forgotten', async t => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-session-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-session-'));
   t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
   let min = 0;
   const remote = {

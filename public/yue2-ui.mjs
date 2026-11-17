@@ -73,7 +73,7 @@ export function initYue2Ui({ api, toast, state, readFields, selectModel, applyIn
   let planned = null; // the lyrics the current plan was made for
   let mode = 'new'; // 'new' (YuE2 writes the plan) or 'cover' (the plan comes from an existing song)
   let cover = null; // { id, title, seconds, chords } of the original song kept on the server
-  let engineRestart = false; // only the Sonora that starts the engine itself offers the restart button
+  let engineRestart = false; // only the Force Studio v2 that starts the engine itself offers the restart button
   let loraHosts = { local: false, runpod: false }; // where YuE2 LoRA can be used
   let loraEngineReady = true; // on RunPod: is yue2.cpp installed on the volume (from the last report)
   let loras = []; // the catalogue from /api/yue2/adapters
@@ -84,6 +84,57 @@ export function initYue2Ui({ api, toast, state, readFields, selectModel, applyIn
   let roll = null;
   let startAt = 0;
   const active = () => state().health?.musicModel === 'yue2';
+
+  /* ---------- model file picker, above Compose ---------- */
+  const MODEL_BARS = ['#yue-model-bar'];
+  const MODEL_SELECTS = ['#yue-checkpoint'];
+  /** Every checkpoint ComfyUI lists, with the one the next songs will load. */
+  function paintModelPicker() {
+    const health = state().health || {};
+    const on = health.musicModel === 'yue2';
+    for (const id of MODEL_BARS) {
+      const bar = $(id);
+      if (bar) bar.hidden = !on;
+    }
+    if (!on) return;
+    const all = Array.isArray(health.checkpoints) ? health.checkpoints : [];
+    // Only YuE2 checkpoints are useful here; if ComfyUI lists none under that name, show them all.
+    const yue = all.filter(name => /yue2/i.test(name));
+    const list = yue.length ? yue : all;
+    const current = health.checkpoint || '';
+    const signature = list.join('|') + '#' + current;
+    for (const id of MODEL_SELECTS) {
+      const select = $(id);
+      if (!select || select.dataset.signature === signature || !list.length) continue;
+      select.dataset.signature = signature;
+      select.replaceChildren(
+        ...list.map(name => {
+          const option = document.createElement('option');
+          option.value = name;
+          option.textContent = name;
+          option.selected = name === current;
+          return option;
+        })
+      );
+    }
+    const note = $('#yue-checkpoint-note');
+    if (note)
+      note.textContent = !list.length
+        ? 'ComfyUI lists no model file.'
+        : health.missingModels?.length
+          ? `Missing: ${health.missingModels.join(', ')}`
+          : 'Used by the next songs.';
+  }
+  async function pickModel(value) {
+    if (!value) return;
+    try {
+      await api('/api/yue2/checkpoint', 'POST', { checkpoint: value });
+      toast(`Model for the next songs: ${value}`);
+    } catch (error) {
+      toast(error.message);
+    }
+  }
+  for (const id of MODEL_SELECTS) $(id)?.addEventListener('change', event => pickModel(event.target.value));
   /** 'local' when this PC is chosen (or the only option), otherwise 'runpod'. */
   const host = () =>
     hosts.local && (!hosts.runpod || $('#yue-host').value === 'local') ? 'local' : 'runpod';
@@ -153,7 +204,7 @@ export function initYue2Ui({ api, toast, state, readFields, selectModel, applyIn
                 const sliders = use
                   ? `<div class="yue-lora-sliders">${a.scales.ar || use.ar ? strengthInput(a, 'ar', use.ar) : ''}${a.scales.nar || use.nar ? strengthInput(a, 'nar', use.nar) : ''}</div>`
                   : '';
-                return `<div class="yue-lora-row${use ? ' on' : ''}"><div class="yue-lora-head"><span><b>${escape(a.name)}</b> ${a.page ? `<a href="${escape(a.page)}" target="_blank" rel="noopener noreferrer" class="field-hint">by ${escape(a.author)}</a>` : `<span class="field-hint">by ${escape(a.author)}</span>`}${a.trigger ? ` <code title="Keyword: Sonora adds it by itself at the start of the style">${escape(a.trigger)}</code>` : ''}</span><span class="yue-lora-actions">${action}</span></div><p class="field-hint">${escape(a.description)}</p>${sliders}</div>`;
+                return `<div class="yue-lora-row${use ? ' on' : ''}"><div class="yue-lora-head"><span><b>${escape(a.name)}</b> ${a.page ? `<a href="${escape(a.page)}" target="_blank" rel="noopener noreferrer" class="field-hint">by ${escape(a.author)}</a>` : `<span class="field-hint">by ${escape(a.author)}</span>`}${a.trigger ? ` <code title="Keyword: Force Studio v2 adds it by itself at the start of the style">${escape(a.trigger)}</code>` : ''}</span><span class="yue-lora-actions">${action}</span></div><p class="field-hint">${escape(a.description)}</p>${sliders}</div>`;
               })
               .join('')}</div>`
         )
@@ -1353,7 +1404,7 @@ export function initYue2Ui({ api, toast, state, readFields, selectModel, applyIn
     button.disabled = true;
     out.textContent = `${cover ? 'Extracting' : 'Loading the song and extracting'} ${COVER_PARTS[parts][1]}… this can take a few minutes (longer the first time).`;
     try {
-      const headers = { 'X-Sonora': '1', 'x-yue-host': host(), 'x-cover-chords': chords ? '1' : '0' };
+      const headers = { 'X-Force-Studio': '1', 'x-yue-host': host(), 'x-cover-chords': chords ? '1' : '0' };
       const response = await fetch('/api/yue2/cover/melody', {
         method: 'POST',
         headers: cover
@@ -1544,9 +1595,10 @@ export function initYue2Ui({ api, toast, state, readFields, selectModel, applyIn
       followSidebar(config.generationBackend);
       paintHost();
     },
-    /** Show or hide what belongs to YuE2 and what only ACE-Step understands. */
+    /** The model file picker above Compose: every checkpoint ComfyUI lists, the one in use selected. */
     render() {
       const on = active();
+      paintModelPicker();
       $('#yue-panel').hidden = !on;
       $('#yue-mode-box').hidden = !on;
       if (on) paintCover();

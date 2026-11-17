@@ -1,14 +1,14 @@
 // @codedna
-// description: Convert Suno Prompt choices to Sonora's supported musical controls and clean lyric sections.
+// description: Convert Suno Prompt choices to Force Studio v2's supported musical controls and clean lyric sections.
 //
 //
 //
 //
-// exports: sectionOrder | parseStructure | cleanLyrics | toSonora
+// exports: sectionOrder | parseStructure | cleanLyrics | toForceStudioV2
 // used_by: public/create-ui.mjs
 //                   public/prompt-ui.mjs
 // rules:   Preserve existing lyrics unless the user chooses to transfer a new text. Do not map Suno sliders to ACE-Step.
-// agent:   Codex - 2026-10-04 - Prompt-to-Sonora integration boundary.
+// agent:   Codex - 2026-10-04 - Prompt-to-Force Studio v2 integration boundary.
 import { effectiveBpm } from './prompt-core.mjs';
 export function sectionOrder(state) {
   const value = state.structure?.[0] || 'Verse-Chorus-Verse-Chorus-Bridge-Chorus-Outro';
@@ -45,7 +45,7 @@ export function cleanLyrics(value) {
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
-export function toSonora(state, prompt, lyrics = '') {
+export function toForceStudioV2(state, prompt, lyrics = '') {
   if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 3000)
     throw new Error('The prompt must contain 1 to 3000 characters.');
   const result = { tags: prompt.trim() };
@@ -55,7 +55,7 @@ export function toSonora(state, prompt, lyrics = '') {
   if (wanted) {
     const bpm = Number(wanted);
     if (!Number.isInteger(bpm) || bpm < 30 || bpm > 250)
-      throw new Error('Sonora supports whole-number BPM from 30 to 250.');
+      throw new Error('Force Studio v2 supports whole-number BPM from 30 to 250.');
     result.bpm = bpm;
   }
   const key = state.key?.[0]?.replace(/\b(Major|Minor)\b/g, s => s.toLowerCase());

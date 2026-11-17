@@ -56,7 +56,7 @@ function library(dir) {
 }
 
 test('cover graph routes the audio latent into conditioning and disables planner codes', () => {
-  const ref = 'Sonora/' + randomUUID() + '.flac';
+  const ref = 'ForceStudioV2/' + randomUUID() + '.flac';
   const g = buildWorkflow({ ...input, quality: 'full' }, 41, randomUUID(), cfg, ref);
   assert.equal(g['12'].inputs.audio, ref);
   assert.equal(g['13'].class_type, 'VAEEncodeAudio');
@@ -68,7 +68,7 @@ test('cover graph routes the audio latent into conditioning and disables planner
 });
 
 test('editor serializes separation, preserves originals, validates media ownership and recovers interrupted tasks', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-editor-')),
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-editor-')),
     a = library(dir),
     b = library(dir),
     jobs = [a, b];
@@ -127,7 +127,7 @@ test('editor serializes separation, preserves originals, validates media ownersh
 });
 
 test('completed cover is separated and becomes a new voice without replacing the stored base', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-cover-')),
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-cover-')),
     a = library(dir),
     cover = library(dir),
     jobs = [a, cover];
@@ -156,7 +156,7 @@ test('completed cover is separated and becomes a new voice without replacing the
 });
 
 test('editor HTTP serves ranges, protects uploads, exports mixes and submits a cover with canonical duration', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-editor-http-')),
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-editor-http-')),
     job = library(dir);
   fs.writeFileSync(path.join(dir, 'library.json'), JSON.stringify({ version: 1, jobs: [job] }));
   let prompt;
@@ -186,7 +186,7 @@ test('editor HTTP serves ranges, protects uploads, exports mixes and submits a c
     }
     if (url.pathname === '/upload/image') {
       const name = /filename="([a-f0-9-]+\.flac)"/.exec(bytes.toString())[1];
-      return send({ name, subfolder: 'Sonora', type: 'input' });
+      return send({ name, subfolder: 'Force Studio v2', type: 'input' });
     }
     if (url.pathname === '/prompt') {
       prompt = JSON.parse(bytes);
@@ -211,7 +211,7 @@ test('editor HTTP serves ranges, protects uploads, exports mixes and submits a c
   const req = (endpoint, method = 'GET', body, headers = {}) =>
     fetch(base + endpoint, {
       method,
-      headers: { 'X-Sonora': '1', 'Content-Type': 'application/json', ...headers },
+      headers: { 'X-Force-Studio': '1', 'Content-Type': 'application/json', ...headers },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   assert.equal((await req(route + '/separate', 'POST', {})).status, 202);
@@ -226,13 +226,13 @@ test('editor HTTP serves ranges, protects uploads, exports mixes and submits a c
   );
   const denied = await fetch(base + route + '/voice', {
     method: 'POST',
-    headers: { 'X-Sonora': '1', Origin: 'https://attacker.example' },
+    headers: { 'X-Force-Studio': '1', Origin: 'https://attacker.example' },
     body: Buffer.alloc(64),
   });
   assert.equal(denied.status, 403);
   const upload = await fetch(base + route + '/voice', {
     method: 'POST',
-    headers: { 'X-Sonora': '1', 'X-Audio-Name': encodeURIComponent('Voce <nuova>.wav') },
+    headers: { 'X-Force-Studio': '1', 'X-Audio-Name': encodeURIComponent('Voce <nuova>.wav') },
     body: Buffer.alloc(64),
   });
   assert.equal(upload.status, 202);
@@ -263,7 +263,7 @@ test('editor HTTP serves ranges, protects uploads, exports mixes and submits a c
 });
 
 test('importing external song to editor allows separation, downloading separate tracks and deletion', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-ext-editor-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-ext-editor-'));
   fs.writeFileSync(path.join(dir, 'library.json'), JSON.stringify({ version: 1, jobs: [] }));
   const app = createStudio(
     { ...cfg, comfyUrl: 'http://127.0.0.1:9' },
@@ -278,7 +278,7 @@ test('importing external song to editor allows separation, downloading separate 
 
   const uploadRes = await fetch(base + '/api/editor/import', {
     method: 'POST',
-    headers: { 'X-Sonora': '1', 'X-Audio-Name': encodeURIComponent('Mio Brano.mp3') },
+    headers: { 'X-Force-Studio': '1', 'X-Audio-Name': encodeURIComponent('Mio Brano.mp3') },
     body: Buffer.alloc(128, 7),
   });
   assert.equal(uploadRes.status, 202);
@@ -291,7 +291,7 @@ test('importing external song to editor allows separation, downloading separate 
 
   const sepRes = await fetch(base + `/api/editor/${session.id}/separate`, {
     method: 'POST',
-    headers: { 'X-Sonora': '1', 'Content-Type': 'application/json' },
+    headers: { 'X-Force-Studio': '1', 'Content-Type': 'application/json' },
     body: JSON.stringify({}),
   });
   assert.equal(sepRes.status, 202);
@@ -300,21 +300,21 @@ test('importing external song to editor allows separation, downloading separate 
   assert.ok(fs.existsSync(path.join(dir, 'editor', session.id, 'instrumental.flac')));
 
   const baseFlac = await fetch(base + `/api/editor/${session.id}/audio?kind=base&download=1`, {
-    headers: { 'X-Sonora': '1' },
+    headers: { 'X-Force-Studio': '1' },
   });
   assert.equal(baseFlac.status, 200);
   assert.equal(baseFlac.headers.get('content-type'), 'audio/flac');
   assert.match(baseFlac.headers.get('content-disposition'), /Mio%20Brano-strumenti\.flac/);
 
   const voiceFlac = await fetch(base + `/api/editor/${session.id}/audio?kind=voice&download=1`, {
-    headers: { 'X-Sonora': '1' },
+    headers: { 'X-Force-Studio': '1' },
   });
   assert.equal(voiceFlac.status, 200);
   assert.equal(voiceFlac.headers.get('content-type'), 'audio/flac');
   assert.match(voiceFlac.headers.get('content-disposition'), /Mio%20Brano-voce\.flac/);
 
   const baseMp3 = await fetch(base + `/api/editor/${session.id}/audio?kind=base&format=mp3&download=1`, {
-    headers: { 'X-Sonora': '1' },
+    headers: { 'X-Force-Studio': '1' },
   });
   assert.equal(baseMp3.status, 200);
   assert.equal(baseMp3.headers.get('content-type'), 'audio/mpeg');
@@ -322,14 +322,14 @@ test('importing external song to editor allows separation, downloading separate 
 
   const delRes = await fetch(base + `/api/editor/${session.id}`, {
     method: 'DELETE',
-    headers: { 'X-Sonora': '1' },
+    headers: { 'X-Force-Studio': '1' },
   });
   assert.equal(delRes.status, 200);
   assert.ok(!fs.existsSync(path.join(dir, 'editor', session.id)));
 });
 
 test('an instrumental track can skip separation: the base is ready without the separation model', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-instr-')),
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-instr-')),
     a = library(dir),
     b = library(dir),
     actions = [];

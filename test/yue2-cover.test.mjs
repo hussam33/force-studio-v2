@@ -18,7 +18,7 @@ const ABC =
   'X:1\nM:4/4\nL:1/16\nQ:1/4=100\nV: Vocal\nV: Ins\nK:C\n% verse\nV: Vocal\nc4d4e4f4|\nV: Ins\nC,16|\n';
 
 test('a song is prepared as a base64 mono MP3 and the temporary file is removed', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-cover-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-cover-'));
   const source = path.join(dir, 'song.flac');
   fs.writeFileSync(source, 'x');
   const seen = [];
@@ -48,7 +48,7 @@ test('a song is prepared as a base64 mono MP3 and the temporary file is removed'
 });
 
 test('the cover route uploads a song, asks the worker for its melody and removes every temporary file', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-cover-route-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-cover-route-'));
   const song = path.join(dir, 'song.wav');
   const made = spawnSync('ffmpeg', [
     '-y',
@@ -96,7 +96,7 @@ test('the cover route uploads a song, asks the worker for its melody and removes
     fetch(base + '/api/yue2/cover/melody', {
       method: 'POST',
       headers: {
-        'X-Sonora': '1',
+        'X-Force-Studio': '1',
         'x-audio-name': encodeURIComponent('Dancing Queen.wav'),
         'x-yue-host': 'runpod',
         'x-cover-chords': chords ? '1' : '0',
@@ -135,7 +135,7 @@ test('the cover route uploads a song, asks the worker for its melody and removes
   assert.equal(listen.headers.get('content-type'), 'audio/mpeg');
   const again = await fetch(base + '/api/yue2/cover/melody', {
     method: 'POST',
-    headers: { 'X-Sonora': '1', 'x-yue-host': 'runpod', 'x-cover-chords': '1', 'x-cover-id': result.coverId },
+    headers: { 'X-Force-Studio': '1', 'x-yue-host': 'runpod', 'x-cover-chords': '1', 'x-cover-id': result.coverId },
     body: '',
   });
   assert.equal(again.status, 200);
@@ -149,7 +149,7 @@ test('the cover route uploads a song, asks the worker for its melody and removes
   const gone = await fetch(base + '/api/yue2/cover/melody', {
     method: 'POST',
     headers: {
-      'X-Sonora': '1',
+      'X-Force-Studio': '1',
       'x-yue-host': 'runpod',
       'x-cover-id': '00000000-0000-4000-8000-000000000000',
     },
@@ -171,7 +171,7 @@ test('the cover route uploads a song, asks the worker for its melody and removes
   const before = received.length;
   const junk = await fetch(base + '/api/yue2/cover/melody', {
     method: 'POST',
-    headers: { 'X-Sonora': '1' },
+    headers: { 'X-Force-Studio': '1' },
     body: Buffer.alloc(2000, 1),
   });
   assert.equal(junk.status, 400);

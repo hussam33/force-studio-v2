@@ -81,7 +81,7 @@ export function initCreateUi({
     if (tab !== 'custom') applyReworkMode();
     if (!quiet)
       try {
-        localStorage.setItem('sonora-create-tab', tab);
+        localStorage.setItem('force-create-tab', tab);
       } catch {}
   }
   $$('[data-create-tab]').forEach(b => b.addEventListener('click', () => selectTab(b.dataset.createTab)));
@@ -181,7 +181,7 @@ export function initCreateUi({
       const r = await fetch('/api/reference', {
         method: 'POST',
         headers: {
-          'X-Sonora': '1',
+          'X-Force-Studio': '1',
           'Content-Type': 'application/octet-stream',
           'X-Audio-Name': encodeURIComponent(file.name),
           'X-Audio-Start': String(start),
@@ -403,10 +403,10 @@ export function initCreateUi({
       : `<p class="field-hint">${list.length ? 'No prompt matches the search.' : 'No saved prompts yet. Write the style, then save it above.'}</p>`;
     let old = [];
     try {
-      old = JSON.parse(localStorage.getItem('sonora-prompt-presets-v1')) || [];
+      old = JSON.parse(localStorage.getItem('force-prompt-presets-v1')) || [];
     } catch {}
     $('#saved-migrate').hidden =
-      !Array.isArray(old) || !old.length || localStorage.getItem('sonora-presets-migrated') === '1';
+      !Array.isArray(old) || !old.length || localStorage.getItem('force-presets-migrated') === '1';
   }
   $('#saved-open').addEventListener('click', () => {
     savedError('');
@@ -469,7 +469,7 @@ export function initCreateUi({
     const blob = new Blob([JSON.stringify(state().prompts || [], null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'sonora-prompt.json';
+    a.download = 'force-prompt.json';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   });
@@ -494,7 +494,7 @@ export function initCreateUi({
   });
   $('#saved-migrate').addEventListener('click', async () => {
     try {
-      const old = JSON.parse(localStorage.getItem('sonora-prompt-presets-v1')) || [];
+      const old = JSON.parse(localStorage.getItem('force-prompt-presets-v1')) || [];
       const list = old
         .filter(p => typeof p?.name === 'string' && p.choices)
         .map(p => {
@@ -511,7 +511,7 @@ export function initCreateUi({
         })
         .filter(Boolean);
       toast(`${await importList(list)} presets imported from the browser.`);
-      localStorage.setItem('sonora-presets-migrated', '1');
+      localStorage.setItem('force-presets-migrated', '1');
       renderSaved();
     } catch (err) {
       savedError(err.message);
@@ -596,6 +596,33 @@ export function initCreateUi({
     $('#rw-voice').closest('select').previousElementSibling.hidden = part;
     $('#rw-voice').hidden = part;
     $('#rw-go-label').textContent = part ? 'Change this part' : 'Create the remix';
+    // Rules: YuE2 has no audio-to-audio remix: a remix there is a cover (melody transcribed, sung again), and a
+    // single section cannot be changed at all. Say it before the button is pressed.
+    const yue2Model = state().health?.musicModel === 'yue2';
+    if (yue2Model) {
+      $('#rw-intro').textContent = part
+        ? 'YuE2 cannot change a single part of a song: it sings the whole song again. Open Remix to make a cover of this song.'
+        : 'YuE2 makes a cover of this song: it reads the melody from the audio and sings it again with the new style and words. The original is not touched.';
+      // YuE2 reads "How much to change" as sampling freedom; Quality and Styles to avoid stay ACE-Step only.
+      for (const id of ['rw-finish', 'rw-avoid'])
+        document.getElementById(id)?.closest('.opt-row')?.setAttribute('hidden', '');
+      for (const id of ['rw-strength', 'rw-steps-row', 'rw-melody-row', 'rw-seed-row'])
+        document.getElementById(id)?.closest('.opt-row')?.removeAttribute('hidden');
+      for (const id of ['rw-steps-row', 'rw-melody-row', 'rw-seed-row', 'rw-temperature-row', 'rw-topp-row', 'rw-repetition-row'])
+        document.getElementById(id)?.removeAttribute('hidden');
+      document.getElementById('rw-strength-hint').textContent =
+        'Low = stays close to the original melody and arrangement. High = freer singing, new phrasing and instruments.';
+      $('#rw-go-label').textContent = part ? 'Not available with YuE2' : 'Create the cover';
+      $('#rw-go').disabled = part;
+    } else {
+      for (const id of ['rw-strength', 'rw-finish', 'rw-avoid'])
+        document.getElementById(id)?.closest('.opt-row')?.removeAttribute('hidden');
+      for (const id of ['rw-steps-row', 'rw-melody-row', 'rw-seed-row', 'rw-temperature-row', 'rw-topp-row', 'rw-repetition-row'])
+        document.getElementById(id)?.setAttribute('hidden', '');
+      document.getElementById('rw-strength-hint').textContent =
+        'Low = recognisable, only touched up. High = almost a new song. To change genre try 70–90%.';
+      $('#rw-go').disabled = false;
+    }
     const j = selectedJob();
     $('#rw-strength').value = part ? 70 : 50;
     $('#rw-strength-label').textContent = $('#rw-strength').value + '%';
@@ -721,9 +748,29 @@ export function initCreateUi({
   }
   for (const id of ['#rw-from', '#rw-to', '#rw-start', '#rw-end']) $(id).addEventListener('input', drawPeaks);
   window.addEventListener('resize', drawPeaks);
+  /** Show the sampling numbers on their labels. */
+  function paintTune() {
+    const fmt = (id, digits) => {
+      const label = $(id + '-label');
+      if (label) label.textContent = Number($(id).value).toFixed(digits);
+    };
+    fmt('#rw-temperature', 2);
+    fmt('#rw-topp', 2);
+    fmt('#rw-repetition', 2);
+  }
+  /** "How much to change" is the macro dial: it moves temperature and top-p together, then they can be fine-tuned. */
+  function strengthToSampling() {
+    const v = Number($('#rw-strength').value) / 100;
+    $('#rw-temperature').value = String(Math.round((0.85 + v * 0.5) * 100) / 100);
+    $('#rw-topp').value = String(Math.round((0.9 + v * 0.07) * 100) / 100);
+    paintTune();
+  }
   $('#rw-strength').addEventListener('input', () => {
     $('#rw-strength-label').textContent = $('#rw-strength').value + '%';
+    strengthToSampling();
   });
+  for (const id of ['#rw-temperature', '#rw-topp', '#rw-repetition']) $(id).addEventListener('input', paintTune);
+  strengthToSampling();
   $('#rw-source').addEventListener('change', () => {
     const j = selectedJob();
     $('#rw-error').hidden = true;
@@ -748,7 +795,7 @@ export function initCreateUi({
       const r = await fetch('/api/library/upload', {
         method: 'POST',
         headers: {
-          'X-Sonora': '1',
+          'X-Force-Studio': '1',
           'Content-Type': 'application/octet-stream',
           'X-Audio-Name': encodeURIComponent(file.name),
           'X-Workspace': workspace(),
@@ -799,10 +846,20 @@ export function initCreateUi({
     if (!job) return reworkError('Choose or upload a song first.');
     const part = mode() === 'repaint';
     const voice = $('#rw-voice').value;
+    const seedText = $('#rw-seed').value.trim();
     const body = {
       mode: mode(),
       tags: $('#rw-tags').value,
       strength: Number($('#rw-strength').value) / 100,
+      // YuE2 reads the same slider as "how freely it sings" and takes the detail steps and the melody lock.
+      variation: Number($('#rw-strength').value) / 100,
+      steps: Number($('#rw-steps').value) || 32,
+      // Fine tuning that drives the song itself (sent to the YuE2 graph).
+      temperature: Number($('#rw-temperature').value),
+      topP: Number($('#rw-topp').value),
+      repetition: Number($('#rw-repetition').value),
+      keepMelody: $('#rw-keep-melody').checked,
+      ...(seedText && Number.isInteger(Number(seedText)) ? { seed: Number(seedText) } : {}),
       finish: $('#rw-finish').value,
       avoid: $('#rw-avoid').value,
     };
@@ -864,7 +921,7 @@ export function initCreateUi({
     paintLanguageRow();
   }
   try {
-    selectTab(localStorage.getItem('sonora-create-tab') || 'custom', true);
+    selectTab(localStorage.getItem('force-create-tab') || 'custom', true);
   } catch {
     selectTab('custom', true);
   }

@@ -28,7 +28,7 @@
 import path from 'node:path';
 export function audioPython(root) {
   return (
-    process.env.SONORA_PYTHON ||
+    process.env.FORCE_STUDIO_PYTHON ||
     path.join(
       root,
       'runtime',

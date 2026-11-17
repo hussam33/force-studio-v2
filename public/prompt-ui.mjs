@@ -3,10 +3,10 @@
 // exports: initPromptStudio
 // used_by: public/app.js
 // rules:   Escape selected content. Send AI requests only on clicks; importing never starts audio generation.
-// agent:   Codex - 2026-10-04 - Sonora-native interface for the user-owned prompt tool.
+// agent:   Codex - 2026-10-04 - Force Studio v2-native interface for the user-owned prompt tool.
 import * as P from './prompt-presets.mjs';
 import { createEmptyState, buildPrompt, randomPromptState, bandBpm } from './prompt-core.mjs';
-import { toSonora, sectionOrder, parseStructure } from './prompt-adapter.mjs';
+import { toForceStudioV2, sectionOrder, parseStructure } from './prompt-adapter.mjs';
 import { parseDuration, formatDuration } from './song-duration.mjs';
 import { bindDurationField } from './duration-field.mjs';
 
@@ -85,7 +85,7 @@ export function initPromptStudio({ onTransfer, currentContext, notify, onNewSong
   root.className = 'prompt-studio';
   root.hidden = true;
   root.setAttribute('aria-label', 'Built-in Suno Prompt');
-  root.innerHTML = `<div class="prompt-heading"><div><div class="section-eyebrow">SONORA × SUNO PROMPT MASTER</div><h1>Design your sound.</h1><p>The categories of your tool, the next song of Sonora.</p></div><div class="prompt-heading-actions"><button id="prompt-new" class="pill-button">+ New song</button><button id="prompt-random" class="pill-button">↻ Surprise me</button><button id="prompt-reset" class="pill-button subtle">Reset choices</button></div></div><div class="prompt-grid"><section class="prompt-choices"><div class="prompt-card-heading"><span>01 / CHOOSE THE CHARACTER</span><span id="prompt-selection-count">0 choices</span></div><div class="prompt-category-nav" role="group" aria-label="Prompt categories">${groups.map(([id, label]) => `<button data-category="${id}" class="${id === active ? 'selected' : ''}">${label}</button>`).join('')}</div><div class="prompt-option-search"><input id="prompt-search" type="search" placeholder="Search the options…" aria-label="Search music options"></div><div id="prompt-options" class="prompt-options"></div><div class="prompt-custom"><div class="form-row"><div><label for="prompt-custom-genre">Custom genre</label><input id="prompt-custom-genre" maxlength="300" placeholder="Your genre blend"></div><div><label for="prompt-bpm">Exact BPM</label><input id="prompt-bpm" type="number" min="30" max="250" placeholder="Es. 110"></div></div><label for="prompt-details">Other details</label><textarea id="prompt-details" rows="3" maxlength="1600" placeholder="A gentle crescendo, a round bass, a close voice…"></textarea><div class="prompt-saved-row"><select id="prompt-saved" aria-label="Personal presets"><option value="">Your personal presets</option></select><button id="prompt-save" class="pill-button subtle">Save choices</button></div><div id="prompt-save-panel" hidden><label for="prompt-preset-name">Preset name</label><div class="rename-row"><input id="prompt-preset-name" maxlength="70" placeholder="E.g. Indie night"><button id="prompt-save-confirm" class="pill-button">Save</button><button id="prompt-save-cancel" class="pill-button subtle">Cancel</button></div></div></div></section><section class="prompt-results"><div class="prompt-card-heading"><span>02 / FOCUS</span><span id="prompt-ai-status">AI check…</span></div><div class="prompt-result-tabs" role="group" aria-label="Prompt version"><button data-version="optimized" class="selected">Optimised locally</button><button data-version="raw">Original</button></div><label for="prompt-output" class="sr-only">Final music prompt</label><textarea id="prompt-output" rows="7" maxlength="3000" placeholder="Choose the categories: the prompt is built here. You can also edit it."></textarea><div class="prompt-output-meta"><span id="prompt-word-count">0 characters</span><button id="prompt-copy" class="text-button">Copy prompt</button></div><div id="prompt-conflicts" class="prompt-conflicts" hidden></div><div class="prompt-ai-actions"><button id="prompt-boost" class="pill-button">✧ Improve with AI</button><span id="prompt-ai-provider-hint" class="field-hint">AI · uses your account</span></div><ul id="prompt-strategy" class="prompt-strategy" hidden></ul><details class="prompt-exclude"><summary>Exclude and details for Suno</summary><p class="field-hint">Exclude remains available for Suno. The transfer to Sonora uses the positive prompt, BPM, key and voice type; Suno-specific controls are not converted.</p><label for="prompt-exclude-output">Exclude</label><textarea id="prompt-exclude-output" rows="2" readonly></textarea></details><div class="prompt-lyrics-card"><div class="prompt-card-heading"><span>03 / FIND THE WORDS</span><span>AI LYRICS</span></div><div class="form-row"><div><label for="prompt-lyrics-mode">Operation</label><select id="prompt-lyrics-mode"><option value="write">Write original lyrics</option><option value="tag-existing">Organise my lyrics</option></select></div><div><label for="prompt-lyrics-language">Language</label><select id="prompt-lyrics-language"><option value="Italian">Italian</option><option value="English">English</option><option value="French">French</option><option value="Spanish">Spanish</option><option value="German">German</option><option value="Portuguese">Portuguese</option></select></div></div><label for="prompt-concept">Song idea</label><textarea id="prompt-concept" rows="2" maxlength="2500" placeholder="An evening in the city, a person you would like to hold on to for a moment longer…"></textarea><div class="form-row"><div><label for="prompt-tone">Tone</label><select id="prompt-tone"><option value="intimate and concrete">Intimate</option><option value="uplifting and hopeful">Bright</option><option value="melancholic and reflective">Melancholic</option><option value="playful and witty">Ironic</option><option value="energetic and direct">Energetic</option></select></div><div><label for="prompt-pov">Point of view</label><select id="prompt-pov"><option value="first person">First person</option><option value="second person">Addressed to someone</option><option value="third person">Narrative</option></select></div></div><div class="form-row"><div><label for="prompt-lyrics-duration">Expected length</label><div class="duration-field"><div class="duration-controls"><input id="prompt-lyrics-duration" type="text" inputmode="numeric" autocomplete="off" value="0:30" placeholder="m:ss"><select id="prompt-lyrics-duration-preset" aria-label="Suggested durations"><option value="" selected>⋯</option><option value="0:15">0:15 · draft</option><option value="0:30">0:30</option><option value="1:00">1:00</option><option value="1:30">1:30</option><option value="2:00">2:00</option><option value="2:30">2:30</option><option value="3:00">3:00</option><option value="3:30">3:30</option><option value="4:00">4:00</option><option value="4:30">4:30</option><option value="5:00">5:00</option></select></div></div></div><div><label for="prompt-lyrics-voice">Voice of the lyrics</label><select id="prompt-lyrics-voice"><option value="as described in the music prompt">From the music prompt</option><option value="male lead">Male</option><option value="female lead">Female</option><option value="male and female duet">Duet</option></select></div></div><div><label for="prompt-structure-custom">Order of the sections (optional)</label><input id="prompt-structure-custom" maxlength="200" placeholder="Es. verse, verse, chorus, verse, bridge, chorus, chorus"></div><p id="prompt-structure-note" class="field-hint"></p><button id="prompt-write-lyrics" class="pill-button">✧ Write AI lyrics</button><p class="field-hint">You can read over and edit the result before importing it. Organise my lyrics adds sections while keeping the words.</p><label for="prompt-lyrics-result">Lyrics to bring into Sonora</label><textarea id="prompt-lyrics-result" rows="9" maxlength="12000" placeholder="Your lyrics, or the AI result, will appear here."></textarea><label class="prompt-check"><input id="prompt-transfer-lyrics" type="checkbox" checked>Also import these lyrics</label></div><p id="prompt-error" class="error" role="alert" hidden></p><div class="prompt-transfer"><button id="prompt-use" class="generate">Use in Sonora <span class="arrow">↗</span></button><p class="field-hint">Transfers the fields. The music starts when you press Create your song.</p></div></section></div>`;
+  root.innerHTML = `<div class="prompt-heading"><div><div class="section-eyebrow">FORCE STUDIO V2 × SUNO PROMPT MASTER</div><h1>Design your sound.</h1><p>The categories of your tool, the next song of Force Studio v2.</p></div><div class="prompt-heading-actions"><button id="prompt-new" class="pill-button">+ New song</button><button id="prompt-random" class="pill-button">↻ Surprise me</button><button id="prompt-reset" class="pill-button subtle">Reset choices</button></div></div><div class="prompt-grid"><section class="prompt-choices"><div class="prompt-card-heading"><span>01 / CHOOSE THE CHARACTER</span><span id="prompt-selection-count">0 choices</span></div><div class="prompt-category-nav" role="group" aria-label="Prompt categories">${groups.map(([id, label]) => `<button data-category="${id}" class="${id === active ? 'selected' : ''}">${label}</button>`).join('')}</div><div class="prompt-option-search"><input id="prompt-search" type="search" placeholder="Search the options…" aria-label="Search music options"></div><div id="prompt-options" class="prompt-options"></div><div class="prompt-custom"><div class="form-row"><div><label for="prompt-custom-genre">Custom genre</label><input id="prompt-custom-genre" maxlength="300" placeholder="Your genre blend"></div><div><label for="prompt-bpm">Exact BPM</label><input id="prompt-bpm" type="number" min="30" max="250" placeholder="Es. 110"></div></div><label for="prompt-details">Other details</label><textarea id="prompt-details" rows="3" maxlength="1600" placeholder="A gentle crescendo, a round bass, a close voice…"></textarea><div class="prompt-saved-row"><select id="prompt-saved" aria-label="Personal presets"><option value="">Your personal presets</option></select><button id="prompt-save" class="pill-button subtle">Save choices</button></div><div id="prompt-save-panel" hidden><label for="prompt-preset-name">Preset name</label><div class="rename-row"><input id="prompt-preset-name" maxlength="70" placeholder="E.g. Indie night"><button id="prompt-save-confirm" class="pill-button">Save</button><button id="prompt-save-cancel" class="pill-button subtle">Cancel</button></div></div></div></section><section class="prompt-results"><div class="prompt-card-heading"><span>02 / FOCUS</span><span id="prompt-ai-status">AI check…</span></div><div class="prompt-result-tabs" role="group" aria-label="Prompt version"><button data-version="optimized" class="selected">Optimised locally</button><button data-version="raw">Original</button></div><label for="prompt-output" class="sr-only">Final music prompt</label><textarea id="prompt-output" rows="7" maxlength="3000" placeholder="Choose the categories: the prompt is built here. You can also edit it."></textarea><div class="prompt-output-meta"><span id="prompt-word-count">0 characters</span><button id="prompt-copy" class="text-button">Copy prompt</button></div><div id="prompt-conflicts" class="prompt-conflicts" hidden></div><div class="prompt-ai-actions"><button id="prompt-boost" class="pill-button">✧ Improve with AI</button><span id="prompt-ai-provider-hint" class="field-hint">AI · uses your account</span></div><ul id="prompt-strategy" class="prompt-strategy" hidden></ul><details class="prompt-exclude"><summary>Exclude and details for Suno</summary><p class="field-hint">Exclude remains available for Suno. The transfer to Force Studio v2 uses the positive prompt, BPM, key and voice type; Suno-specific controls are not converted.</p><label for="prompt-exclude-output">Exclude</label><textarea id="prompt-exclude-output" rows="2" readonly></textarea></details><div class="prompt-lyrics-card"><div class="prompt-card-heading"><span>03 / FIND THE WORDS</span><span>AI LYRICS</span></div><div class="form-row"><div><label for="prompt-lyrics-mode">Operation</label><select id="prompt-lyrics-mode"><option value="write">Write original lyrics</option><option value="tag-existing">Organise my lyrics</option></select></div><div><label for="prompt-lyrics-language">Language</label><select id="prompt-lyrics-language"><option value="Italian">Italian</option><option value="English">English</option><option value="French">French</option><option value="Spanish">Spanish</option><option value="German">German</option><option value="Portuguese">Portuguese</option></select></div></div><label for="prompt-concept">Song idea</label><textarea id="prompt-concept" rows="2" maxlength="2500" placeholder="An evening in the city, a person you would like to hold on to for a moment longer…"></textarea><div class="form-row"><div><label for="prompt-tone">Tone</label><select id="prompt-tone"><option value="intimate and concrete">Intimate</option><option value="uplifting and hopeful">Bright</option><option value="melancholic and reflective">Melancholic</option><option value="playful and witty">Ironic</option><option value="energetic and direct">Energetic</option></select></div><div><label for="prompt-pov">Point of view</label><select id="prompt-pov"><option value="first person">First person</option><option value="second person">Addressed to someone</option><option value="third person">Narrative</option></select></div></div><div class="form-row"><div><label for="prompt-lyrics-duration">Expected length</label><div class="duration-field"><div class="duration-controls"><input id="prompt-lyrics-duration" type="text" inputmode="numeric" autocomplete="off" value="0:30" placeholder="m:ss"><select id="prompt-lyrics-duration-preset" aria-label="Suggested durations"><option value="" selected>⋯</option><option value="0:15">0:15 · draft</option><option value="0:30">0:30</option><option value="1:00">1:00</option><option value="1:30">1:30</option><option value="2:00">2:00</option><option value="2:30">2:30</option><option value="3:00">3:00</option><option value="3:30">3:30</option><option value="4:00">4:00</option><option value="4:30">4:30</option><option value="5:00">5:00</option></select></div></div></div><div><label for="prompt-lyrics-voice">Voice of the lyrics</label><select id="prompt-lyrics-voice"><option value="as described in the music prompt">From the music prompt</option><option value="male lead">Male</option><option value="female lead">Female</option><option value="male and female duet">Duet</option></select></div></div><div><label for="prompt-structure-custom">Order of the sections (optional)</label><input id="prompt-structure-custom" maxlength="200" placeholder="Es. verse, verse, chorus, verse, bridge, chorus, chorus"></div><p id="prompt-structure-note" class="field-hint"></p><button id="prompt-write-lyrics" class="pill-button">✧ Write AI lyrics</button><p class="field-hint">You can read over and edit the result before importing it. Organise my lyrics adds sections while keeping the words.</p><label for="prompt-lyrics-result">Lyrics to bring into Force Studio v2</label><textarea id="prompt-lyrics-result" rows="9" maxlength="12000" placeholder="Your lyrics, or the AI result, will appear here."></textarea><label class="prompt-check"><input id="prompt-transfer-lyrics" type="checkbox" checked>Also import these lyrics</label></div><p id="prompt-error" class="error" role="alert" hidden></p><div class="prompt-transfer"><button id="prompt-use" class="generate">Use in Force Studio v2 <span class="arrow">↗</span></button><p class="field-hint">Transfers the fields. The music starts when you press Create your song.</p></div></section></div>`;
   const aiSettings = document.createElement('details');
   aiSettings.id = 'prompt-ai-settings';
   aiSettings.className = 'prompt-ai-settings';
@@ -135,7 +135,7 @@ export function initPromptStudio({ onTransfer, currentContext, notify, onNewSong
     return clean;
   };
   try {
-    const draft = JSON.parse(localStorage.getItem('sonora-prompt-draft-v1'));
+    const draft = JSON.parse(localStorage.getItem('force-prompt-draft-v1'));
     if (draft) {
       choices = normalize(draft.choices);
       outputOverride = typeof draft.output === 'string' ? draft.output.slice(0, 3000) : '';
@@ -167,7 +167,7 @@ export function initPromptStudio({ onTransfer, currentContext, notify, onNewSong
             key === 'duration' ? formatDuration(parseDuration(draft[key]) ?? 30) : draft[key];
       }
     }
-    const stored = JSON.parse(localStorage.getItem('sonora-prompt-presets-v1'));
+    const stored = JSON.parse(localStorage.getItem('force-prompt-presets-v1'));
     saved = Array.isArray(stored)
       ? stored.filter(s => typeof s?.name === 'string' && s.choices).slice(0, 30)
       : [];
@@ -175,7 +175,7 @@ export function initPromptStudio({ onTransfer, currentContext, notify, onNewSong
   const persist = () => {
     try {
       localStorage.setItem(
-        'sonora-prompt-draft-v1',
+        'force-prompt-draft-v1',
         JSON.stringify({
           choices,
           output: outputOverride,
@@ -216,7 +216,7 @@ export function initPromptStudio({ onTransfer, currentContext, notify, onNewSong
     updatePreview();
     updateButtons();
     try {
-      localStorage.removeItem('sonora-prompt-draft-v1');
+      localStorage.removeItem('force-prompt-draft-v1');
     } catch {}
   }
   const applyAiStatus = result => {
@@ -403,9 +403,9 @@ export function initPromptStudio({ onTransfer, currentContext, notify, onNewSong
     )
       onNewSong();
   });
-  root.addEventListener('sonora:prompt-reset', resetSong);
+  root.addEventListener('force studio v2:prompt-reset', resetSong);
   // Rules: once a song is created from this draft the next visit starts clean (and does not pull the old composer lyrics in).
-  root.addEventListener('sonora:song-created', () => {
+  root.addEventListener('force studio v2:song-created', () => {
     consumed = true;
     persist();
   });
@@ -439,7 +439,7 @@ export function initPromptStudio({ onTransfer, currentContext, notify, onNewSong
     saved.unshift({ name, choices: structuredClone(choices) });
     saved = saved.slice(0, 30);
     try {
-      localStorage.setItem('sonora-prompt-presets-v1', JSON.stringify(saved));
+      localStorage.setItem('force-prompt-presets-v1', JSON.stringify(saved));
     } catch {
       showError('Cannot save the preset.');
       return;
@@ -481,7 +481,7 @@ export function initPromptStudio({ onTransfer, currentContext, notify, onNewSong
     try {
       const r = await fetch('/api/prompt-ai/' + route, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Sonora': '1' },
+        headers: { 'Content-Type': 'application/json', 'X-Force-Studio': '1' },
         body: JSON.stringify(body),
       });
       const result = await r.json();
@@ -538,7 +538,7 @@ export function initPromptStudio({ onTransfer, currentContext, notify, onNewSong
       const r = await fetch('/api/prompt-ai/listen', {
         method: 'POST',
         headers: {
-          'X-Sonora': '1',
+          'X-Force-Studio': '1',
           'X-Audio-Name': encodeURIComponent(listenFile.name),
           'Content-Type': 'application/octet-stream',
         },
@@ -547,7 +547,7 @@ export function initPromptStudio({ onTransfer, currentContext, notify, onNewSong
       const result = await r.json();
       if (!r.ok) throw new Error(result.error || 'Listening failed.');
       applyListen(result);
-      notify('Song listened to: prompt and controls updated. Read them over before using them in Sonora.');
+      notify('Song listened to: prompt and controls updated. Read them over before using them in Force Studio v2.');
     } catch (e) {
       showError(e.message);
     } finally {
@@ -602,7 +602,7 @@ export function initPromptStudio({ onTransfer, currentContext, notify, onNewSong
       (r.notes.length
         ? `<ul class="prompt-strategy">${r.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>`
         : '') +
-      '<p class="field-hint">I put the style prompt below, BPM and key in the controls, the themes in the song idea. Write or have someone write original lyrics, then Use in Sonora.</p>';
+      '<p class="field-hint">I put the style prompt below, BPM and key in the controls, the themes in the song idea. Write or have someone write original lyrics, then Use in Force Studio v2.</p>';
     $('#prompt-listen-result').hidden = false;
     persist();
   }
@@ -617,7 +617,7 @@ export function initPromptStudio({ onTransfer, currentContext, notify, onNewSong
       $('#prompt-exclude-output').value = result.exclude;
       $('#prompt-strategy').innerHTML = result.strategy.map(s => `<li>${esc(s)}</li>`).join('');
       $('#prompt-strategy').hidden = !result.strategy.length;
-      notify('Prompt improved. You can edit it or use it in Sonora.');
+      notify('Prompt improved. You can edit it or use it in Force Studio v2.');
     } catch (e) {
       showError(e.message);
     }
@@ -649,7 +649,7 @@ export function initPromptStudio({ onTransfer, currentContext, notify, onNewSong
       const lyrics = $('#prompt-transfer-lyrics').checked ? $('#prompt-lyrics-result').value : '';
       if (lyrics.trim() && choices.vocal.includes('instrumental-only'))
         throw new Error('You chose Instrumental. Select a voice or turn off Also import these lyrics.');
-      const patch = toSonora(choices, $('#prompt-output').value, lyrics);
+      const patch = toForceStudioV2(choices, $('#prompt-output').value, lyrics);
       if (lyrics.trim()) {
         const languageMap = {
           Italian: 'it',
@@ -667,7 +667,7 @@ export function initPromptStudio({ onTransfer, currentContext, notify, onNewSong
       showError(e.message);
     }
   });
-  root.addEventListener('sonora:prompt-open', () => {
+  root.addEventListener('force studio v2:prompt-open', () => {
     if (consumed) {
       resetSong();
       persist();

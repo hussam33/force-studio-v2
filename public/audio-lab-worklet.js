@@ -5,7 +5,7 @@
 // related: public/audio-lab-ui.mjs (loaded dynamically through AudioWorklet)
 // rules:   Keep the per-sample math identical to audio_lab_dsp._compressor_gain.
 // agent:   Claude - 2026-10-04 - Real-time Audio Lab chain matching the offline master.
-class SonoraCompressor extends AudioWorkletProcessor {
+class ForceStudioV2Compressor extends AudioWorkletProcessor {
   constructor(options) {
     super();
     this.envelope = 0;
@@ -46,4 +46,4 @@ class SonoraCompressor extends AudioWorkletProcessor {
     return true;
   }
 }
-registerProcessor('sonora-compressor', SonoraCompressor);
+registerProcessor('force-compressor', ForceStudioV2Compressor);

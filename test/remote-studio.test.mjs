@@ -25,7 +25,7 @@ const request = (url, options = {}) =>
   });
 
 test('portable credentials authenticate ciphertext and keep plaintext off disk', t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-crypto-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-crypto-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const keyFile = path.join(dir, 'key');
   const p = createFileProtector(keyFile),
@@ -39,7 +39,7 @@ test('portable credentials authenticate ciphertext and keep plaintext off disk',
 });
 
 test('RunPod jobs survive restart, save verified audio, and never resubmit generation', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-remote-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-remote-'));
   const loraId = '11111111-1111-4111-8111-111111111111';
   fs.mkdirSync(path.join(dir, 'trainer'));
   fs.writeFileSync(
@@ -50,7 +50,7 @@ test('RunPod jobs survive restart, save verified audio, and never resubmit gener
         name: 'Test LoRA',
         tracks: [],
         job: { status: 'done' },
-        loraName: `sonora-${loraId}.safetensors`,
+        loraName: `force-${loraId}.safetensors`,
       },
     ])
   );
@@ -102,7 +102,7 @@ test('RunPod jobs survive restart, save verified audio, and never resubmit gener
     vae: 'v',
     generationBackend: 'runpod',
     runpod: { endpointId: 'endpoint-test', modelsReady: true },
-    publicOrigin: 'https://sonora.example.test',
+    publicOrigin: 'https://force.example.test',
   };
   const options = {
     dataDir: dir,
@@ -121,9 +121,9 @@ test('RunPod jobs survive restart, save verified audio, and never resubmit gener
   };
   let base = await start();
   const headers = {
-    Host: 'sonora.example.test',
-    Origin: 'https://sonora.example.test',
-    'X-Sonora': '1',
+    Host: 'force.example.test',
+    Origin: 'https://force.example.test',
+    'X-Force-Studio': '1',
     'Content-Type': 'application/json',
   };
   let r = await request(base + '/api/generate', {
@@ -181,7 +181,7 @@ test('RunPod jobs survive restart, save verified audio, and never resubmit gener
 });
 
 test('tampered RunPod downloads fail integrity checks and preserve completed originals', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-bad-audio-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-bad-audio-'));
   fs.mkdirSync(path.join(dir, 'audio'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const bad = Buffer.alloc(40, 2),

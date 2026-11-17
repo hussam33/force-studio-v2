@@ -51,7 +51,7 @@ function openai(reply) {
 }
 // close: shut the lab or server down before its folder is removed (it saves on close)
 const tmp = (t, close) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-ai-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-ai-'));
   t.after(async () => {
     await close?.();
     fs.rmSync(dir, { recursive: true, force: true });
@@ -242,7 +242,7 @@ test('listening route: upload is temporary, long songs are trimmed to 150 s, Dee
   await new Promise(r => app.server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${app.server.address().port}`;
   const post = (route, body, headers = {}) =>
-    fetch(base + route, { method: 'POST', headers: { 'X-Sonora': '1', ...headers }, body });
+    fetch(base + route, { method: 'POST', headers: { 'X-Force-Studio': '1', ...headers }, body });
   const upload = () =>
     post('/api/prompt-ai/listen', Buffer.alloc(4096, 1), {
       'Content-Type': 'application/octet-stream',

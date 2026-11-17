@@ -38,11 +38,11 @@ test('remix and final quality shape the graph: encoded source as latent, partial
   assert.equal(turbo[8].inputs.steps, 8);
   assert.equal(turbo[8].inputs.cfg, 1);
   assert.equal(turbo[8].inputs.denoise, 1);
-  const remix = buildWorkflow(base, 1, id, config, null, { audio: `Sonora/${id}.mp3`, denoise: 0.6 });
+  const remix = buildWorkflow(base, 1, id, config, null, { audio: `ForceStudioV2/${id}.mp3`, denoise: 0.6 });
   assert.deepEqual(remix[8].inputs.latent_image, ['13', 0]);
   assert.equal(remix[8].inputs.denoise, 0.6);
   assert.equal(remix[4].inputs.generate_audio_codes, false);
-  assert.equal(remix[12].inputs.audio, `Sonora/${id}.mp3`);
+  assert.equal(remix[12].inputs.audio, `ForceStudioV2/${id}.mp3`);
   const final = buildWorkflow({ ...base, finish: 'final' }, 1, id, config);
   assert.equal(final[8].inputs.steps, 50);
   assert.equal(final[8].inputs.cfg, 7);
@@ -52,7 +52,7 @@ test('remix and final quality shape the graph: encoded source as latent, partial
     /Invalid source audio\./
   );
   assert.throws(
-    () => buildWorkflow(base, 1, id, config, null, { audio: `Sonora/${id}.mp3`, denoise: 1 }),
+    () => buildWorkflow(base, 1, id, config, null, { audio: `ForceStudioV2/${id}.mp3`, denoise: 1 }),
     /Invalid strength \(0\.2–0\.95\)\./
   );
   assert.throws(() => validateInput({ tags: 'pop', instrumental: true, finish: 'x' }));

@@ -1,8 +1,8 @@
 {
-  "name": "sonora-studio",
-  "version": "1.1.3",
+  "name": "force-studio-v2",
+  "version": "2.0.0",
   "type": "module",
-  "description": "Local-first music creation studio for ComfyUI, ACE-Step 1.5 and YuE2",
+  "description": "Force Studio v2's UI with YuE2 through ComfyUI: text-to-music and music covers, one EXE",
   "engines": {
     "node": ">=22"
   },
@@ -11,6 +11,9 @@
     "test": "node --test test/*.test.mjs",
     "test:audio": "node audio-tests.mjs",
     "check": "node --experimental-vm-modules scripts/check.mjs",
+    "build:portable": "node scripts/make-portable.mjs",
+    "build:exe": "node scripts/make-single-exe.mjs",
+    "build:linux": "node scripts/make-linux.mjs",
     "format": "npx --yes prettier@3 --write \"*.mjs\" \"public/*.mjs\" \"public/*.js\" \"public/*.css\" \"test/*.mjs\""
   }
 }

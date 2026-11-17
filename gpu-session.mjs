@@ -76,7 +76,7 @@ export function createGpuSession({
     } catch {
       save({
         ...read(),
-        error: 'Shutdown not confirmed. Sonora retries automatically; check RunPod if it persists.',
+        error: 'Shutdown not confirmed. Force Studio v2 retries automatically; check RunPod if it persists.',
       });
       throw new Error(status().error);
     }

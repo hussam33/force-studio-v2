@@ -311,7 +311,7 @@ export function lyricSections(lyrics) {
   }
   return labels;
 }
-/** yue2.cpp's `harmony` request field from Sonora's yueHarmony, or undefined. */
+/** yue2.cpp's `harmony` request field from Force Studio v2's yueHarmony, or undefined. */
 export function harmonyField(harmony, lyrics) {
   if (!harmony) return undefined;
   const field = {
@@ -335,9 +335,9 @@ export function seedsFor(input) {
 }
 
 /**
- * Rules: `referenceAudio` ('Sonora/<id>.mp3') adds ReferenceTimbreAudio (the reference guides timbre; the planner's audio codes are then off).
+ * Rules: `referenceAudio` ('ForceStudioV2/<id>.mp3') adds ReferenceTimbreAudio (the reference guides timbre; the planner's audio codes are then off).
  * A list of styles to avoid (`input.avoid`) becomes a real negative prompt only with the SFT model (cfg 7): turbo runs at cfg 1, where it is ignored.
- * `source` ({ audio: 'Sonora/<id>.mp3', denoise }) turns the graph into a remix: the encoded song replaces the empty latent and
+ * `source` ({ audio: 'ForceStudioV2/<id>.mp3', denoise }) turns the graph into a remix: the encoded song replaces the empty latent and
  * `denoise` (0.2-0.95) decides how much of it is rewritten. `finish: 'final'` uses the SFT model (50 steps, real guidance), slower than turbo.
  */
 export function buildWorkflow(input, seed, id, config, referenceAudio = null, source = null) {
@@ -394,11 +394,11 @@ export function buildWorkflow(input, seed, id, config, referenceAudio = null, so
       denoise: source ? source.denoise : 1,
     }),
     9: node('VAEDecodeAudio', { samples: ['8', 0], vae: ['3', 0] }),
-    10: node('SaveAudioMP3', { audio: ['9', 0], filename_prefix: `audio/Sonora/${id}`, quality: 'V0' }),
-    11: node('SaveAudio', { audio: ['9', 0], filename_prefix: `audio/Sonora/${id}` }),
+    10: node('SaveAudioMP3', { audio: ['9', 0], filename_prefix: `audio/ForceStudioV2/${id}`, quality: 'V0' }),
+    11: node('SaveAudio', { audio: ['9', 0], filename_prefix: `audio/ForceStudioV2/${id}` }),
   };
   if (source) {
-    if (typeof source.audio !== 'string' || !/^Sonora\/[a-f0-9-]{36}\.mp3$/.test(source.audio))
+    if (typeof source.audio !== 'string' || !/^ForceStudioV2\/[a-f0-9-]{36}\.mp3$/.test(source.audio))
       throw new Error('Invalid source audio.');
     if (!(source.denoise >= 0.2 && source.denoise <= 0.95)) throw new Error('Invalid strength (0.2–0.95).');
     graph['12'] = node('LoadAudio', { audio: source.audio });
@@ -407,7 +407,7 @@ export function buildWorkflow(input, seed, id, config, referenceAudio = null, so
   }
   if (referenceAudio) {
     if (source) throw new Error('Remix and reference audio cannot be combined.');
-    if (typeof referenceAudio !== 'string' || !/^Sonora\/[a-f0-9-]{36}\.(?:flac|mp3)$/.test(referenceAudio))
+    if (typeof referenceAudio !== 'string' || !/^ForceStudioV2\/[a-f0-9-]{36}\.(?:flac|mp3)$/.test(referenceAudio))
       throw new Error('Invalid audio reference.');
     graph['12'] = node('LoadAudio', { audio: referenceAudio });
     graph['13'] = node('VAEEncodeAudio', { audio: ['12', 0], vae: ['3', 0] });

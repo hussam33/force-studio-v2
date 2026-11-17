@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for trying Sonora Studio. This is a free project maintained in spare time, so please give as much detail as you can. Reports with the information below are much easier to fix.
+        Thanks for trying Force Studio v2. This is a free project maintained in spare time, so please give as much detail as you can. Reports with the information below are much easier to fix.
   - type: dropdown
     id: provider
     attributes:

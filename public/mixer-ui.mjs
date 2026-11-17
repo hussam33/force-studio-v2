@@ -100,7 +100,7 @@ export function initStemMixer({ api, toast, pauseLibrary, openView, onExported }
     ...lanes.map(l => l.id),
   ];
   const isSource = name => !isLane(name);
-  const lanesKey = id => 'sonora-lanes-' + id;
+  const lanesKey = id => 'force-lanes-' + id;
   function saveLanes() {
     try {
       localStorage.setItem(lanesKey(selected), JSON.stringify(lanes));
@@ -117,7 +117,7 @@ export function initStemMixer({ api, toast, pauseLibrary, openView, onExported }
     paintedKey = '';
   let importFiles = [],
     importing = false;
-  const storeKey = id => 'sonora-mixer-' + id;
+  const storeKey = id => 'force-mixer-' + id;
   function saveSettings() {
     try {
       localStorage.setItem(storeKey(selected), JSON.stringify(settings));
@@ -165,7 +165,7 @@ export function initStemMixer({ api, toast, pauseLibrary, openView, onExported }
     $('mix-import-go').textContent =
       draft && !importFiles.length ? 'Finish import' : 'Import stems into the mixer';
   }
-  const clipsKey = id => 'sonora-clips-' + id;
+  const clipsKey = id => 'force-clips-' + id;
   function saveClips() {
     try {
       localStorage.setItem(clipsKey(selected), JSON.stringify(timeline.clips()));
@@ -236,7 +236,7 @@ export function initStemMixer({ api, toast, pauseLibrary, openView, onExported }
   });
   // ---------- External audio: import a file or record a take ----------
   const uploadHeaders = (name, kind) => ({
-    'X-Sonora': '1',
+    'X-Force-Studio': '1',
     'Content-Type': 'application/octet-stream',
     'x-audio-name': encodeURIComponent(name),
     'x-audio-kind': kind,
@@ -340,7 +340,7 @@ export function initStemMixer({ api, toast, pauseLibrary, openView, onExported }
         );
       try {
         localStorage.setItem(
-          'sonora-rec',
+          'force-rec',
           JSON.stringify({ device: $('rec-device').value, channels: $('rec-channels').value })
         );
       } catch {}
@@ -349,7 +349,7 @@ export function initStemMixer({ api, toast, pauseLibrary, openView, onExported }
       if (!lane || !isLane(lane)) lane = makeLane(`Recording ${lanes.length + 1}`);
       if (!lane) throw new Error('No track available.');
       const source = ctx.createMediaStreamSource(stream),
-        node = new AudioWorkletNode(ctx, 'sonora-rec', {
+        node = new AudioWorkletNode(ctx, 'force-rec', {
           numberOfInputs: 1,
           numberOfOutputs: 1,
           outputChannelCount: [1],
@@ -648,7 +648,7 @@ export function initStemMixer({ api, toast, pauseLibrary, openView, onExported }
       if (!workletReady) void ensureWorklet();
       else {
         if (!n.dsp) {
-          n.dsp = new AudioWorkletNode(ctx, 'sonora-fx', {
+          n.dsp = new AudioWorkletNode(ctx, 'force-fx', {
             numberOfInputs: 1,
             numberOfOutputs: 1,
             outputChannelCount: [2],
@@ -1066,7 +1066,7 @@ export function initStemMixer({ api, toast, pauseLibrary, openView, onExported }
           $('mix-import-progress').textContent = `Uploading ${i + 1}/${files.length}: ${files[i].name}`;
           const response = await fetch(`/api/stems/${id}/import/${picks[i]}`, {
             method: 'POST',
-            headers: { 'X-Sonora': '1', 'Content-Type': 'application/octet-stream' },
+            headers: { 'X-Force-Studio': '1', 'Content-Type': 'application/octet-stream' },
             body: files[i],
           });
           const value = await response.json().catch(() => ({}));
@@ -1162,7 +1162,7 @@ export function initStemMixer({ api, toast, pauseLibrary, openView, onExported }
   paintTracks();
   paintAiRange(null);
   try {
-    const saved = JSON.parse(localStorage.getItem('sonora-rec') || 'null');
+    const saved = JSON.parse(localStorage.getItem('force-rec') || 'null');
     if (saved?.channels && [...$('rec-channels').options].some(o => o.value === saved.channels))
       $('rec-channels').value = saved.channels;
   } catch {}

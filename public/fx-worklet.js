@@ -7,7 +7,7 @@
 // agent:   claude-sonnet-5-5 | anthropic | 2026-10-09 | s_20261009_dsp | Thin wrapper with parameter messages and a gain-reduction meter.
 import { createFxProcessor } from './dsp-fx.mjs';
 
-class SonoraFx extends AudioWorkletProcessor {
+class ForceStudioV2Fx extends AudioWorkletProcessor {
   constructor() {
     super();
     this.fx = createFxProcessor(sampleRate);
@@ -34,4 +34,4 @@ class SonoraFx extends AudioWorkletProcessor {
     return true;
   }
 }
-registerProcessor('sonora-fx', SonoraFx);
+registerProcessor('force-fx', ForceStudioV2Fx);

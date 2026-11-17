@@ -147,7 +147,7 @@ export function createYue2Models({
         if (signal.aborted) throw new Error('Model download cancelled.');
         const item = details.find(file => file.name === entry.name);
         const target = path.join(plan.dir, entry.name);
-        const partial = target + '.sonora-part';
+        const partial = target + '.force-part';
         if (await fs.promises.lstat(target).catch(() => null))
           throw new Error(`${entry.name} appeared during setup. It was left untouched.`);
         const partialStat = await fs.promises.lstat(partial).catch(() => null);

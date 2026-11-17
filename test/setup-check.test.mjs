@@ -52,10 +52,10 @@ test('missing programs come with a hint', async () => {
   assert.equal(ffmpeg.status, 'missing');
   assert.match(ffmpeg.hint, /winget install Gyan\.FFmpeg/);
   assert.equal(gpu.status, 'warn');
-  assert.match(gpu.hint, /RunPod or Vast\.ai/);
+  assert.match(gpu.hint, /NVIDIA card/);
 });
 
-test('a card with less than 12 GB is a warning, and results are cached briefly', async () => {
+test('a card with less than 8 GB is a warning, and results are cached briefly', async () => {
   let calls = 0;
   const spawnImpl = (...args) => {
     calls++;
@@ -64,7 +64,7 @@ test('a card with less than 12 GB is a warning, and results are cached briefly',
   const check = createSetupCheck({ nodeVersion: 'v24.0.0', spawnImpl });
   const items = await check.system();
   assert.equal(items[2].status, 'warn');
-  assert.match(items[2].hint, /12 GB card/);
+  assert.match(items[2].hint, /8 GB/);
   const before = calls;
   await check.system();
   assert.equal(calls, before, 'a second request inside the cache time starts nothing');

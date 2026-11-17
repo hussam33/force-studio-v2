@@ -17,7 +17,7 @@ test('the app is packaged without development files, tests and personal config',
     'public/app.js',
     'integrations/runpod/yue2_worker.py',
     'yue2-adapters.json',
-    'Avvia Sonora.cmd',
+    'comfy-yue2.mjs',
   ])
     assert.equal(shouldPackage(file), true, file);
   for (const file of [

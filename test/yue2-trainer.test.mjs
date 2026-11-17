@@ -21,7 +21,7 @@ const until = async check => {
 };
 
 test('resumes a partial upload receipt, trains once and registers the adapter', async t => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-yue2-trainer-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-yue2-trainer-'));
   t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
   const projectId = randomUUID(),
     trackId = randomUUID();
@@ -84,7 +84,7 @@ test('resumes a partial upload receipt, trains once and registers the adapter', 
 });
 
 test('cancelling during upload never submits a GPU training job', async t => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-yue2-cancel-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-yue2-cancel-'));
   t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
   const projectId = randomUUID(),
     trackId = randomUUID();

@@ -31,7 +31,7 @@ test('the shipped catalogue is pinned, credited and in Italian', () => {
 });
 
 test('a LoRA is downloaded, checked by size, listed and removed', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonora-lora-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'force-lora-'));
   const catalog = [
     {
       id: 'demo',

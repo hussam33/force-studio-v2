@@ -5,7 +5,7 @@
 //
 //
 // exports: createModelSetup | ACE_STEP_FILES
-// used_by: sonora-studio/server.mjs
+// used_by: force-studio-v2/server.mjs
 // rules:   Download only fixed official model files; never follow a user-provided URL or overwrite an existing model.
 // agent:   Codex - 2026-10-10 - Local ACE-Step model setup.
 import crypto from 'node:crypto';
@@ -207,7 +207,7 @@ export function createModelSetup({
         await checkedDirectory(modelsDir, { create: true });
         await checkedDirectory(targetDir, { create: true });
         const target = path.join(targetDir, entry.name);
-        const partial = target + '.sonora-part';
+        const partial = target + '.force-part';
         for (const filePath of [target, partial]) {
           try {
             const stat = await fs.promises.lstat(filePath);
