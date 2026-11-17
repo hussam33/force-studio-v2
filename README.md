@@ -24,6 +24,30 @@ workflows.
 
 ![Donate dialog with the wallets and QR codes](docs/screenshots/donate.png)
 
+
+## Appearances and skins
+
+**Provider settings → Appearances** holds 29 bundled backgrounds, a dim slider and seven colour skins. Everything
+is stored in the browser, so the studio opens the way you left it.
+
+![Appearances panel: backgrounds, dim slider and skins](docs/screenshots/appearances.png)
+
+The same studio with the **Acid** skin and the **Switchbacks** background at 52 % dim:
+
+![Acid skin with a background applied](docs/screenshots/appearance-skin.jpg)
+
+| Skin | Accent colours |
+| --- | --- |
+| Cyberpunk | magenta + cyan |
+| Blade | azure + cyan |
+| Acid | green + mint |
+| Blood | red + orange |
+| Solar | amber + magenta |
+| Vapor | pink + sky |
+| Mono | desaturated graphite |
+
+The skins are generated from `public/style.css` at build time (`scripts/make-skins.mjs`), so every build carries
+all seven in sync with the interface.
 ## Where the model lives
 
 The model that the next songs will load is chosen at the top of the composer:
