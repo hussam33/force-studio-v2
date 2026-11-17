@@ -1,8 +1,14 @@
 # Force Studio v2
 
-A local music studio for **YuE2** running inside **ComfyUI**. It keeps the Sonora Studio interface — Create,
-Remix, library, editor, mixer, stems, Audio Lab — and replaces the music engine with ComfyUI's native YuE2
-nodes. Two ComfyUI workflows drive everything:
+A local music studio for **ComfyUI**, with two engines you can switch per song:
+
+| Engine | Model files | What it is for |
+| --- | --- | --- |
+| **YuE2-3B** | `yue2_3b_bf16.safetensors` | writes melody and chords (an editable ABC plan), then sings the lyrics |
+| **ACE-Step 1.5** | `acestep_v1.5_turbo` (4.5 GB) or `acestep_v1.5_xl_turbo_bf16` (9.3 GB), `qwen_0.6b`/`qwen_1.7b`/`qwen_4b` encoders, `ace_1.5_vae` | fast full songs from a style description and lyrics |
+
+The diffusion model is chosen in the composer; the planner encoder is paired automatically (1.7B for the
+standard turbo model, 4B for XL). Two ComfyUI workflows drive YuE2:
 
 | Workflow | ComfyUI template | What it does here |
 | --- | --- | --- |
@@ -11,6 +17,21 @@ nodes. Two ComfyUI workflows drive everything:
 
 Both files live in `workflows/` and are installed (opened) in ComfyUI at every start, next to your own
 workflows.
+
+## Screenshots
+
+![Create music](docs/screenshots/studio.png)
+
+![Donate dialog with the wallets and QR codes](docs/screenshots/donate.png)
+
+## Also in the studio
+
+- **Appearances** — 29 bundled backgrounds blended under the skin, a dim slider, and seven colour skins
+  (Cyberpunk, Blade, Acid, Blood, Solar, Vapor, Mono) generated from one stylesheet at build time.
+- **Force Music** button opens the artist's SoundCloud; **Donate** shows crypto addresses with QR codes.
+- Library, favorites, archive, remix/cover, prompt assistant and the editor tools that ship with the
+  Sonora Studio interface.
+
 
 ## Opening the app
 
